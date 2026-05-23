@@ -1,5 +1,6 @@
 import { notFound }    from 'next/navigation'
 import type { Metadata } from 'next'
+import Link              from 'next/link'
 import { createClient }  from '@/lib/supabase/server'
 import { getLandListingDetail } from '@/features/land-listings/services/land-listing-detail'
 import { LAND_TYPE_LABELS } from '@/features/land-listings/types'
@@ -7,9 +8,7 @@ import type { LandListing } from '@/features/land-listings/types'
 
 export const revalidate = 3600
 
-// ---------------------------------------------------------------------------
-// generateMetadata
-// ---------------------------------------------------------------------------
+// ── generateMetadata ────────────────────────────────────────────────────────
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
@@ -39,9 +38,7 @@ export async function generateMetadata(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Page component
-// ---------------------------------------------------------------------------
+// ── Page ────────────────────────────────────────────────────────────────────
 
 export default async function LandListingDetailPage(
   { params }: { params: Promise<{ slug: string }> },
@@ -55,214 +52,203 @@ export default async function LandListingDetailPage(
   const landTypeLabel = l.land_type ? LAND_TYPE_LABELS[l.land_type] : null
 
   return (
-    <main className="page-wrap" style={{ paddingTop: '1.5rem', paddingBottom: '3rem' }}>
-      {/* Breadcrumb */}
-      <nav style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginBottom: '1.25rem' }}>
-        <a href="/" style={{ color: 'var(--muted)' }}>Trang chủ</a>
-        {' / '}
-        <a href="/dat-nong-nghiep" style={{ color: 'var(--muted)' }}>Đất nông nghiệp</a>
-        {geo.province && (
-          <>
-            {' / '}
-            <a href={`/dat-nong-nghiep/${geo.province.slug}`} style={{ color: 'var(--muted)' }}>{geo.province.name}</a>
-          </>
-        )}
-        {' / '}
-        <span style={{ color: 'var(--sea-ink)' }}>{l.title}</span>
-      </nav>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: '2rem', alignItems: 'start' }}>
-        {/* Left column */}
-        <div>
-          {/* Cover image */}
-          {images.length > 0 && (
-            <div style={{ borderRadius: '1rem', overflow: 'hidden', border: '1px solid var(--line)', marginBottom: '1.5rem', background: 'var(--sand)' }}>
-              <img
-                src={images[0].image_url}
-                alt={l.title}
-                width={760}
-                height={440}
-                style={{ width: '100%', height: 'clamp(200px, 38vw, 440px)', objectFit: 'cover', display: 'block' }}
-                loading="eager"
-              />
-            </div>
+    <>
+      <main
+        className="max-w-5xl mx-auto px-4 md:px-8 pt-6"
+        style={{ paddingBottom: l.phone ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '3rem' }}
+      >
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-[0.8125rem] text-gray-400 mb-6 flex-wrap">
+          <Link href="/" className="text-gray-400 no-underline hover:text-gray-600 transition-colors">Trang chủ</Link>
+          <span className="text-gray-300">/</span>
+          <Link href="/dat-nong-nghiep" className="text-gray-400 no-underline hover:text-gray-600 transition-colors">Đất nông nghiệp</Link>
+          {geo.province && (
+            <>
+              <span className="text-gray-300">/</span>
+              <Link href={`/dat-nong-nghiep/${geo.province.slug}`} className="text-gray-400 no-underline hover:text-gray-600 transition-colors">
+                {geo.province.name}
+              </Link>
+            </>
           )}
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[200px]">{l.title}</span>
+        </nav>
 
-          {/* Image gallery */}
-          {images.length > 1 && (
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-              {images.slice(1).map(img => (
-                <div key={img.id} style={{ flexShrink: 0, width: '96px', height: '72px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--line)' }}>
-                  <img src={img.image_url} alt="" width={96} height={72} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px] gap-8 items-start">
+
+          {/* ── Left column ── */}
+          <div>
+            {/* Cover image */}
+            {images.length > 0 && (
+              <div className="w-full overflow-hidden rounded-[2rem] shadow-[0_4px_24px_rgb(0,0,0,0.10)] mb-6 bg-gray-100 dark:bg-gray-800">
+                <img
+                  src={images[0].image_url}
+                  alt={l.title}
+                  width={760}
+                  height={440}
+                  className="w-full object-cover block"
+                  style={{ height: 'clamp(200px, 38vw, 440px)' }}
+                  loading="eager"
+                />
+              </div>
+            )}
+
+            {/* Image gallery */}
+            {images.length > 1 && (
+              <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+                {images.slice(1).map(img => (
+                  <div key={img.id} className="shrink-0 w-24 h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                    <img src={img.image_url} alt="" width={96} height={72} className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tags + title */}
+            <div className="mb-5">
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {l.is_featured && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#0071E3]/10 text-[#0071E3] dark:text-[#409CFF] text-[0.625rem] font-bold tracking-wide uppercase">
+                    Nổi bật
+                  </span>
+                )}
+                {landTypeLabel && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#34C759]/10 dark:bg-[#30D158]/15 text-[#34C759] dark:text-[#30D158] text-[0.625rem] font-bold tracking-wide uppercase">
+                    {landTypeLabel}
+                  </span>
+                )}
+              </div>
+              <h1 className="m-0 text-[1.625rem] font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                {l.title}
+              </h1>
+            </div>
+
+            {/* Spec grid */}
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-[0_1px_6px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)] p-5 mb-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {l.land_area_text    && <SpecItem icon="📐" label="Diện tích" value={l.land_area_text} />}
+                {l.price_text        && <SpecItem icon="💰" label="Giá"       value={l.price_text} />}
+                {landTypeLabel       && <SpecItem icon="🌾" label="Loại đất"  value={landTypeLabel} />}
+                {l.crop_type         && <SpecItem icon="🌿" label="Cây trồng" value={l.crop_type} />}
+                {l.legal_status_text && <SpecItem icon="📄" label="Pháp lý"   value={l.legal_status_text} />}
+                {l.coordinates_text  && <SpecItem icon="📍" label="Tọa độ"    value={l.coordinates_text} />}
+              </div>
+            </div>
+
+            {/* Location */}
+            {(geo.province || geo.district || geo.ward) && (
+              <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-[0_1px_6px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)] px-5 py-4 mb-5">
+                <p className="m-0 mb-1.5 text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-gray-400">Vị trí</p>
+                <p className="m-0 text-[0.9375rem] text-gray-900 dark:text-white font-medium">
+                  {[geo.ward?.name_full, geo.district?.name_full, geo.province?.name_full].filter(Boolean).join(', ')}
+                </p>
+              </div>
+            )}
+
+            {/* Description */}
+            {l.description && (
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="m-0 text-[1.0625rem] font-bold tracking-tight text-gray-900 dark:text-white shrink-0">Mô tả</h2>
+                  <div className="flex-1 h-px bg-gray-200/70 dark:bg-white/[0.07]" />
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Title + tags */}
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginBottom: '0.625rem' }}>
-              {l.is_featured && (
-                <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--lagoon-deep)', background: 'rgba(79,184,178,0.12)', padding: '2px 8px', borderRadius: '999px' }}>
-                  Nổi bật
-                </span>
-              )}
-              {landTypeLabel && (
-                <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--palm)', background: 'rgba(47,106,74,0.08)', padding: '2px 8px', borderRadius: '999px' }}>
-                  {landTypeLabel}
-                </span>
-              )}
-            </div>
-            <h1 style={{ margin: 0, fontSize: 'clamp(1.25rem, 3.5vw, 1.75rem)', fontWeight: 700, color: 'var(--sea-ink)', lineHeight: 1.3 }}>
-              {l.title}
-            </h1>
+                <p className="m-0 text-[0.9375rem] text-gray-500 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                  {l.description}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Spec grid */}
-          <div className="island-shell" style={{ borderRadius: '0.875rem', padding: '1.125rem', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.875rem' }}>
-              {l.land_area_text    && <SpecItem icon="📐" label="Diện tích"    value={l.land_area_text} />}
-              {l.price_text        && <SpecItem icon="💰" label="Giá"          value={l.price_text} />}
-              {landTypeLabel       && <SpecItem icon="🌾" label="Loại đất"     value={landTypeLabel} />}
-              {l.crop_type         && <SpecItem icon="🌿" label="Cây trồng"    value={l.crop_type} />}
-              {l.legal_status_text && <SpecItem icon="📄" label="Pháp lý"      value={l.legal_status_text} />}
-              {l.coordinates_text  && <SpecItem icon="📍" label="Tọa độ"       value={l.coordinates_text} />}
+          {/* ── Right sidebar — desktop only ── */}
+          <aside className="land-detail-sidebar sticky top-[72px]">
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-[0_2px_12px_rgb(0,0,0,0.07)] dark:shadow-[0_2px_12px_rgb(0,0,0,0.3)] p-5">
+              <p className="m-0 mb-3 text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-gray-400">Liên hệ người bán</p>
+              {l.price_text && (
+                <p className="m-0 mb-4 text-[1.375rem] font-bold text-[#0071E3] dark:text-[#409CFF]">
+                  {l.price_text}
+                </p>
+              )}
+              {l.phone ? (
+                <div className="flex flex-col gap-2.5">
+                  <a
+                    href={`tel:${l.phone}`}
+                    className="flex items-center justify-center gap-2 h-11 rounded-full bg-[#0071E3] hover:bg-[#005BBB] active:opacity-75 text-white font-semibold text-[0.9375rem] no-underline transition-colors"
+                  >
+                    📞 Gọi Ngay
+                  </a>
+                  <a
+                    href={`https://zalo.me/${l.phone.replace(/^0/, '84')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 h-11 rounded-full bg-black/[0.06] dark:bg-white/[0.1] hover:bg-black/[0.1] active:opacity-75 text-gray-900 dark:text-white font-semibold text-[0.9375rem] no-underline transition-colors"
+                  >
+                    💬 Zalo
+                  </a>
+                </div>
+              ) : (
+                <p className="m-0 text-[0.875rem] text-gray-400">Thông tin liên hệ đang cập nhật.</p>
+              )}
             </div>
-          </div>
-
-          {/* Location */}
-          {(geo.province || geo.district || geo.ward) && (
-            <div style={{ marginBottom: '1.5rem', padding: '0.875rem 1rem', borderRadius: '0.75rem', border: '1px solid var(--line)', background: 'var(--surface)' }}>
-              <p className="island-kicker" style={{ margin: '0 0 0.5rem' }}>Vị trí</p>
-              <p style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--sea-ink)' }}>
-                {[geo.ward?.name_full, geo.district?.name_full, geo.province?.name_full].filter(Boolean).join(', ')}
-              </p>
-            </div>
-          )}
-
-          {/* Description */}
-          {l.description && (
-            <div style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--sea-ink)', marginBottom: '0.625rem' }}>Mô tả</h2>
-              <p style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--sea-ink-soft)', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
-                {l.description}
-              </p>
-            </div>
-          )}
+          </aside>
         </div>
 
-        {/* Right sidebar — contact card (desktop only) */}
-        <aside style={{ position: 'sticky', top: '72px' }}>
-          <div className="island-shell" style={{ borderRadius: '1rem', padding: '1.25rem' }}>
-            <p className="island-kicker" style={{ margin: '0 0 0.75rem' }}>Liên hệ người bán</p>
-            {l.price_text && (
-              <p style={{ margin: '0 0 1rem', fontSize: '1.375rem', fontWeight: 700, color: 'var(--lagoon-deep)' }}>
-                {l.price_text}
-              </p>
-            )}
-            {l.phone ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                <a
-                  href={`tel:${l.phone}`}
-                  className="btn-primary"
-                  style={{ justifyContent: 'center', gap: '0.5rem' }}
-                >
-                  📞 Gọi Ngay
-                </a>
-                <a
-                  href={`https://zalo.me/${l.phone.replace(/^0/, '84')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary"
-                  style={{ justifyContent: 'center', gap: '0.5rem' }}
-                >
-                  💬 Zalo
-                </a>
-              </div>
-            ) : (
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--muted)' }}>Thông tin liên hệ đang cập nhật.</p>
-            )}
-          </div>
-        </aside>
-      </div>
+        {/* ── Nearby listings ── */}
+        {nearby.length > 0 && (
+          <section className="mt-10" aria-label="Đất gần đây">
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="m-0 text-[1.0625rem] font-bold tracking-tight text-gray-900 dark:text-white shrink-0">
+                Đất nông nghiệp gần đây
+              </h2>
+              <div className="flex-1 h-px bg-gray-200/70 dark:bg-white/[0.07]" />
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none m-0 p-0">
+              {nearby.map(n => <li key={n.id}><NearbyCard listing={n} /></li>)}
+            </ul>
+          </section>
+        )}
 
-      {/* Nearby listings */}
-      {nearby.length > 0 && (
-        <section style={{ marginTop: '2.5rem' }} aria-label="Đất gần đây">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.875rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--sea-ink)' }}>Đất nông nghiệp gần đây</h2>
-            <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
-          </div>
-          <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.875rem', listStyle: 'none', margin: 0, padding: 0 }}>
-            {nearby.map(n => <li key={n.id}><NearbyCard listing={n} /></li>)}
-          </ul>
-        </section>
-      )}
+      </main>
 
-      {/* Mobile sticky bar */}
+      {/* ── Mobile floating pill ── */}
       {l.phone && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-          display: 'flex', gap: '0.75rem',
-          padding: '0.75rem 1rem',
-          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
-          background: 'var(--header-bg)',
-          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          borderTop: '1px solid var(--line)',
-          boxShadow: '0 -4px 24px rgba(23,58,64,0.10)',
-        }}
-          className="sticky-contact-bar"
+        <div
+          className="land-sticky-bar fixed bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none px-5"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <a
-            href={`tel:${l.phone}`}
-            style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: '0.5rem', minHeight: '48px', borderRadius: '0.75rem',
-              border: '1px solid transparent', background: 'var(--lagoon)',
-              color: '#fff', fontWeight: 700, fontSize: '0.9375rem', textDecoration: 'none',
-            }}
-          >
-            📞 Gọi Ngay
-          </a>
-          <a
-            href={`https://zalo.me/${l.phone.replace(/^0/, '84')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: '0.5rem', minHeight: '48px', borderRadius: '0.75rem',
-              border: '1px solid var(--chip-line)', background: 'var(--chip-bg)',
-              color: 'var(--sea-ink)', fontWeight: 700, fontSize: '0.9375rem', textDecoration: 'none',
-            }}
-          >
-            💬 Zalo
-          </a>
+          <div className="pointer-events-auto flex gap-2 p-1.5 rounded-full backdrop-blur-2xl bg-white/80 dark:bg-black/80 shadow-[0_8px_32px_rgb(0,0,0,0.14)] border border-black/[0.06] dark:border-white/[0.08]">
+            <a
+              href={`tel:${l.phone}`}
+              className="flex items-center gap-1.5 px-5 h-11 rounded-full bg-[#0071E3] active:opacity-75 text-white font-semibold text-[0.9375rem] no-underline"
+            >
+              📞 Gọi Ngay
+            </a>
+            <a
+              href={`https://zalo.me/${l.phone.replace(/^0/, '84')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-5 h-11 rounded-full bg-black/[0.06] dark:bg-white/[0.15] active:opacity-75 text-gray-900 dark:text-white font-semibold text-[0.9375rem] no-underline"
+            >
+              💬 Zalo
+            </a>
+          </div>
         </div>
       )}
 
       <style>{`
-        @media (min-width: 768px) {
-          .sticky-contact-bar { display: none !important; }
-        }
-        @media (max-width: 767px) {
-          aside { display: none !important; }
-        }
+        @media (min-width: 768px) { .land-sticky-bar { display: none !important; } }
+        @media (max-width: 767px) { .land-detail-sidebar { display: none !important; } }
       `}</style>
-    </main>
+    </>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function SpecItem({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
-        {icon} {label}
-      </div>
-      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--sea-ink)' }}>{value}</div>
+      <p className="m-0 mb-0.5 text-[0.6875rem] font-bold tracking-[0.08em] uppercase text-gray-400">{icon} {label}</p>
+      <p className="m-0 text-[0.9375rem] font-semibold text-gray-900 dark:text-white">{value}</p>
     </div>
   )
 }
@@ -270,24 +256,19 @@ function SpecItem({ icon, label, value }: { icon: string; label: string; value: 
 function NearbyCard({ listing: n }: { listing: LandListing }) {
   const label = n.land_type ? LAND_TYPE_LABELS[n.land_type] : null
   return (
-    <a
+    <Link
       href={`/dat-nong-nghiep/chi-tiet/${n.slug}`}
-      style={{
-        display: 'flex', flexDirection: 'column', gap: '0.5rem',
-        padding: '0.875rem', borderRadius: '0.75rem',
-        border: '1px solid var(--line)', background: 'var(--surface)',
-        textDecoration: 'none', height: '100%',
-      }}
+      className="flex flex-col gap-1.5 h-full p-4 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-[0_1px_6px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)] no-underline transition-transform duration-200 hover:scale-[1.02]"
     >
       {label && (
-        <span style={{ alignSelf: 'flex-start', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--palm)', background: 'rgba(47,106,74,0.08)', padding: '1px 7px', borderRadius: '999px' }}>
+        <span className="self-start px-2 py-0.5 rounded-full bg-[#34C759]/10 dark:bg-[#30D158]/15 text-[#34C759] dark:text-[#30D158] text-[0.625rem] font-bold tracking-wide uppercase">
           {label}
         </span>
       )}
-      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--sea-ink)', lineHeight: 1.4 }}>{n.title}</div>
+      <p className="m-0 font-semibold text-[0.875rem] text-gray-900 dark:text-white leading-snug">{n.title}</p>
       {n.price_text && (
-        <div style={{ marginTop: 'auto', fontWeight: 700, fontSize: '0.875rem', color: 'var(--lagoon-deep)' }}>{n.price_text}</div>
+        <p className="mt-auto m-0 font-bold text-[0.875rem] text-[#34C759] dark:text-[#30D158]">{n.price_text}</p>
       )}
-    </a>
+    </Link>
   )
 }

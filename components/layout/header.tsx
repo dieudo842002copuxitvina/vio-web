@@ -7,32 +7,37 @@ import { SearchAutocomplete } from '@/components/search-autocomplete'
 const NAV_LINKS = [
   { href: '/',                label: 'Khám phá' },
   { href: '/dat-nong-nghiep', label: 'Đất nông nghiệp' },
+  { href: '/dang-nhap',       label: 'Đăng nhập' },
 ]
 
 export function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] backdrop-blur-sm">
-      <div className="page-wrap flex items-center h-14 gap-4">
+    <header className="sticky top-0 z-50 border-b border-black/[0.07] dark:border-white/[0.09] bg-white/75 dark:bg-black/75 backdrop-blur-xl supports-[backdrop-filter]:bg-white/75 dark:supports-[backdrop-filter]:bg-black/75">
+      <div className="page-wrap flex items-center h-14 gap-3">
+
         {/* Logo */}
         <Link
           href="/"
-          className="shrink-0 font-bold text-xl text-[var(--sea-ink)] no-underline"
-          style={{ fontFamily: '"Fraunces", Georgia, serif' }}
+          className="shrink-0 text-[1.0625rem] font-bold tracking-tight text-[var(--sea-ink)] no-underline select-none"
         >
           VIO<span className="text-[var(--lagoon)]">.</span>LOCAL
         </Link>
 
-        {/* Desktop: search + nav — hidden on mobile */}
-        <div className="hidden md:flex ml-auto items-center gap-4">
-          <SearchAutocomplete compact placeholder="Tìm kiếm..." className="w-52" />
-          <nav className="flex items-center gap-5 text-sm">
+        {/* Desktop: search pill + nav */}
+        <div className="hidden md:flex ml-auto items-center gap-3">
+          <SearchAutocomplete
+            compact
+            placeholder="Tìm kiếm..."
+            className="w-56"
+          />
+          <nav className="flex items-center gap-1">
             {NAV_LINKS.map(l => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-[var(--sea-ink-soft)] no-underline font-medium hover:text-[var(--sea-ink)] transition-colors duration-100 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-lg text-[0.875rem] font-medium text-[var(--sea-ink-soft)] no-underline hover:bg-black/[0.05] dark:hover:bg-white/[0.07] hover:text-[var(--sea-ink)] transition-colors duration-100 whitespace-nowrap"
               >
                 {l.label}
               </Link>
@@ -40,39 +45,39 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Mobile hamburger — hidden on md+ */}
+        {/* Mobile: hamburger */}
         <button
-          className="md:hidden ml-auto p-2 -mr-1 rounded-lg text-[var(--sea-ink-soft)] hover:bg-[var(--chip-bg)] transition-colors"
+          className="md:hidden ml-auto flex items-center justify-center w-9 h-9 rounded-xl bg-black/[0.05] dark:bg-white/[0.08] text-[var(--sea-ink-soft)] transition-colors hover:bg-black/[0.09]"
           onClick={() => setOpen(o => !o)}
           aria-label={open ? 'Đóng menu' : 'Mở menu'}
           aria-expanded={open}
         >
           {open ? (
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M5 5l12 12M17 5L5 17" />
+            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M2 2l11 11M13 2L2 13" />
             </svg>
           ) : (
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 7h16M3 12h16M3 17h16" />
+            <svg width="16" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M0 1h16M0 6h16M0 11h16" />
             </svg>
           )}
         </button>
       </div>
 
-      {/* Mobile menu drawer */}
+      {/* Mobile drawer */}
       {open && (
         <nav
-          className="md:hidden border-t border-[var(--line)] bg-[var(--header-bg)]"
+          className="md:hidden border-t border-black/[0.07] dark:border-white/[0.09] bg-white/90 dark:bg-black/90 backdrop-blur-xl"
           aria-label="Mobile navigation"
         >
-          <div className="page-wrap flex flex-col py-3 gap-2 px-4">
+          <div className="page-wrap px-2 py-3 flex flex-col gap-1.5">
             <SearchAutocomplete placeholder="Tìm kiếm..." className="w-full" />
-            <ul className="flex flex-col gap-0.5 list-none m-0 p-0">
+            <ul className="flex flex-col gap-0.5 list-none m-0 p-0 pt-1">
               {NAV_LINKS.map(l => (
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="block px-3 py-3 rounded-lg text-sm font-medium text-[var(--sea-ink-soft)] hover:bg-[var(--chip-bg)] hover:text-[var(--sea-ink)] no-underline transition-colors"
+                    className="flex items-center px-3 py-2.5 rounded-xl text-[0.9375rem] font-medium text-[var(--sea-ink-soft)] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] hover:text-[var(--sea-ink)] no-underline transition-colors"
                     onClick={() => setOpen(false)}
                   >
                     {l.label}

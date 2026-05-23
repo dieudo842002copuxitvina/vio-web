@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link              from 'next/link'
 import { createClient }  from '@/lib/supabase/server'
 
 export const revalidate = 3600
@@ -24,53 +25,47 @@ export default async function LandIndexPage() {
   const provinces = await getProvinces()
 
   return (
-    <main className="page-wrap" style={{ paddingTop: '1.5rem', paddingBottom: '4rem' }}>
+    <main className="max-w-5xl mx-auto px-4 md:px-8 pt-6 pb-20">
+
       {/* Breadcrumb */}
-      <nav style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-        <a href="/" style={{ color: 'var(--muted)' }}>Trang chủ</a>
-        {' / '}
-        <span style={{ color: 'var(--sea-ink)' }}>Đất nông nghiệp</span>
+      <nav className="flex items-center gap-1.5 text-[0.8125rem] text-gray-400 mb-8">
+        <Link href="/" className="text-gray-400 no-underline hover:text-gray-600 transition-colors">
+          Trang chủ
+        </Link>
+        <span className="text-gray-300">/</span>
+        <span className="text-gray-700 dark:text-gray-300 font-medium">Đất nông nghiệp</span>
       </nav>
 
-      <header style={{ marginBottom: '2rem' }}>
-        <p className="island-kicker" style={{ marginBottom: '0.5rem' }}>Thị trường đất đai</p>
-        <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 700, color: 'var(--sea-ink)', margin: 0 }}>
+      <header className="mb-8">
+        <span className="inline-flex items-center mb-3 px-3 py-1 rounded-full bg-[#34C759]/10 dark:bg-[#30D158]/15 text-[#34C759] dark:text-[#30D158] text-[0.6875rem] font-bold tracking-[0.1em] uppercase">
+          Thị trường đất đai
+        </span>
+        <h1 className="text-[2rem] sm:text-[2.5rem] font-bold tracking-tight text-gray-900 dark:text-white m-0 leading-tight">
           Đất nông nghiệp toàn quốc
         </h1>
-        <p style={{ margin: '0.5rem 0 0', fontSize: '0.9375rem', color: 'var(--sea-ink-soft)', lineHeight: 1.6 }}>
+        <p className="mt-2 text-[0.9375rem] text-gray-500 dark:text-gray-400 leading-relaxed">
           Chọn tỉnh thành để xem danh sách đất nông nghiệp tại khu vực đó.
         </p>
       </header>
 
-      {provinces.length > 0 && (
-        <ul style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '0.625rem',
-          listStyle: 'none', margin: 0, padding: 0,
-        }}>
+      {provinces.length > 0 ? (
+        <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 list-none m-0 p-0">
           {provinces.map(p => (
             <li key={p.id}>
-              <a
+              <Link
                 href={`/dat-nong-nghiep/${p.slug}`}
-                style={{
-                  display: 'block',
-                  padding: '0.875rem 1rem',
-                  borderRadius: '0.75rem',
-                  border: '1px solid var(--chip-line)',
-                  background: 'var(--chip-bg)',
-                  color: 'var(--sea-ink)',
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.9375rem',
-                  transition: 'border-color 150ms',
-                }}
+                className="flex items-center px-4 py-3 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-[0_1px_4px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_4px_rgb(0,0,0,0.25)] text-[0.9375rem] font-medium text-gray-700 dark:text-gray-200 no-underline transition-[box-shadow,transform] duration-200 hover:shadow-[0_2px_8px_rgb(0,0,0,0.12)] hover:scale-[1.02]"
               >
                 {p.name}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
+      ) : (
+        <div className="flex flex-col items-center py-20 text-center">
+          <span className="text-6xl opacity-20 mb-5 select-none" aria-hidden="true">🌾</span>
+          <p className="text-gray-500 text-[0.9375rem]">Chưa có dữ liệu tỉnh thành.</p>
+        </div>
       )}
     </main>
   )
