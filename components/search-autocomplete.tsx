@@ -28,11 +28,11 @@ export function SearchAutocomplete({
   const [open,      setOpen]      = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
 
-  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const wrapRef   = useRef<HTMLDivElement>(null)
-  const inputRef  = useRef<HTMLInputElement>(null)
-  const router    = useRouter()
-  const supabase  = createClient()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wrapRef  = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const router   = useRouter()
+  const supabase = createClient()
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) { setResults([]); setOpen(false); return }
@@ -75,7 +75,6 @@ export function SearchAutocomplete({
     if (e.key === 'Escape') { setOpen(false); setActiveIdx(-1); inputRef.current?.blur() }
   }
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
@@ -88,20 +87,20 @@ export function SearchAutocomplete({
 
   return (
     <div ref={wrapRef} className={`relative ${className ?? ''}`}>
-      {/* Input row */}
-      <div
-        className={`flex items-center gap-2.5 px-3.5 ${inputH} rounded-xl border border-[var(--line)] bg-[var(--surface)] focus-within:border-[var(--lagoon)] transition-colors duration-150`}
-      >
+
+      {/* ── Input row ── */}
+      <div className={`flex items-center gap-2.5 px-3.5 ${inputH} rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#1C1C1E] focus-within:border-[#0071E3] dark:focus-within:border-[#409CFF] transition-colors duration-150`}>
+
         {loading ? (
           <svg
-            className="shrink-0 text-[var(--lagoon)] animate-spin"
+            className="shrink-0 text-[#0071E3] dark:text-[#409CFF] animate-spin"
             width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"
           >
             <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="10" />
           </svg>
         ) : (
           <svg
-            className="shrink-0 text-[var(--muted)]"
+            className="shrink-0 text-gray-400"
             width="16" height="16" fill="none"
             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             aria-hidden="true"
@@ -122,7 +121,7 @@ export function SearchAutocomplete({
           aria-label="Tìm kiếm"
           aria-autocomplete="list"
           aria-expanded={open}
-          className={`flex-1 min-w-0 bg-transparent ${compact ? 'text-sm' : 'text-[0.9375rem]'} text-[var(--sea-ink)] placeholder:text-[var(--muted)] outline-none [&::-webkit-search-cancel-button]:hidden`}
+          className={`flex-1 min-w-0 bg-transparent ${compact ? 'text-sm' : 'text-[0.9375rem]'} text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none [&::-webkit-search-cancel-button]:hidden`}
         />
 
         {query && (
@@ -130,7 +129,7 @@ export function SearchAutocomplete({
             type="button"
             aria-label="Xóa tìm kiếm"
             onClick={() => { setQuery(''); setResults([]); setOpen(false); inputRef.current?.focus() }}
-            className="shrink-0 text-[var(--muted)] hover:text-[var(--sea-ink)] transition-colors"
+            className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M3 3l8 8M11 3l-8 8" />
@@ -139,16 +138,16 @@ export function SearchAutocomplete({
         )}
       </div>
 
-      {/* Dropdown */}
+      {/* ── Dropdown ── */}
       {open && (results.length > 0 || (query.trim().length >= 2 && !loading)) && (
         <ul
           role="listbox"
           aria-label="Kết quả tìm kiếm"
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] shadow-xl overflow-hidden py-1 list-none m-0 p-0 backdrop-blur-sm"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] backdrop-blur-xl bg-white/90 dark:bg-[#1C1C1E]/95 shadow-[0_8px_32px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgb(0,0,0,0.4)] overflow-hidden py-1.5 list-none m-0 p-0"
         >
           {results.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-[var(--muted)] text-center">
-              Không tìm thấy kết quả cho &ldquo;<span className="text-[var(--sea-ink)]">{query}</span>&rdquo;
+            <li className="px-4 py-3 text-sm text-gray-400 text-center">
+              Không tìm thấy &ldquo;<span className="text-gray-700 dark:text-gray-200">{query}</span>&rdquo;
             </li>
           ) : (
             results.map((r, i) => (
@@ -159,19 +158,21 @@ export function SearchAutocomplete({
                 onMouseDown={(e) => { e.preventDefault(); navigate(r) }}
                 onMouseEnter={() => setActiveIdx(i)}
                 className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
-                  i === activeIdx ? 'bg-[var(--chip-bg)]' : 'hover:bg-[var(--chip-bg)]'
+                  i === activeIdx
+                    ? 'bg-gray-100 dark:bg-white/[0.07]'
+                    : 'hover:bg-gray-100 dark:hover:bg-white/[0.07]'
                 }`}
               >
                 <span className="text-base leading-none shrink-0" aria-hidden="true">
                   {r.type === 'storefront' ? '🏪' : '📍'}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="m-0 text-sm font-medium text-[var(--sea-ink)] truncate">{r.name}</p>
+                  <p className="m-0 text-sm font-medium text-gray-900 dark:text-white truncate">{r.name}</p>
                   {r.subtitle && (
-                    <p className="m-0 text-xs text-[var(--muted)] truncate">{r.subtitle}</p>
+                    <p className="m-0 text-xs text-gray-400 dark:text-gray-500 truncate">{r.subtitle}</p>
                   )}
                 </div>
-                <span className="ml-auto shrink-0 text-[0.625rem] font-semibold uppercase tracking-wider text-[var(--muted)] bg-[var(--chip-bg)] border border-[var(--chip-line)] px-1.5 py-0.5 rounded-full">
+                <span className="ml-auto shrink-0 text-[0.625rem] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 dark:bg-white/[0.07] px-2 py-0.5 rounded-full">
                   {r.type === 'storefront' ? 'Hộ KD' : 'Tỉnh'}
                 </span>
               </li>
