@@ -85,7 +85,7 @@ export default function DangTinPage() {
     sb.from('land_categories')
       .select('id, name, slug')
       .order('sort_order', { ascending: true })
-      .then(({ data }) => { if (data) setCategories(data as Category[]) })
+      .then(({ data }: { data: Category[] | null }) => { if (data) setCategories(data) })
   }, [])
 
   useEffect(() => {
