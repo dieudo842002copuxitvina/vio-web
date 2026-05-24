@@ -4,9 +4,44 @@ import { LandListingCard } from '@/components/land-listing-card'
 import type { LandListingCardProps } from '@/components/land-listing-card'
 import { LandSearchAutocomplete } from '@/components/land-search-autocomplete'
 
+const SITE_NAME = 'Nhà Bè Agri'
+const TITLE     = 'Nhà Bè Agri | Nền tảng Giao thương Nông nghiệp & Bất động sản Địa phương'
+const DESC      = 'Khám phá và giao dịch đất nông nghiệp, rẫy sầu riêng, nhà vườn và nông sản trực tiếp từ chủ vườn. Nền tảng minh bạch, thông tin xác thực tại khu vực Nghĩa Trung, Đồng Nai và Đông Nam Bộ.'
+const OG_IMAGE  = 'https://picsum.photos/seed/nhabe-agri-og/1200/630'
+
 export const metadata: Metadata = {
-  title: 'VIO LOCAL — Khám phá Giao thương Nông thôn',
-  description: 'Khám phá hộ kinh doanh, nông sản tươi ngon và đất nông nghiệp địa phương trên toàn 63 tỉnh thành Việt Nam.',
+  title:       TITLE,
+  description: DESC,
+  keywords: [
+    'Mua bán đất nông nghiệp',
+    'Đất rẫy Đồng Nai',
+    'Rẫy sầu riêng',
+    'Nhà vườn Nghĩa Trung',
+    'Nông sản Nhà Bè Agri',
+    'Giá đất nông nghiệp',
+    'Bất động sản nông thôn',
+  ],
+  openGraph: {
+    title:       TITLE,
+    description: DESC,
+    type:        'website',
+    locale:      'vi_VN',
+    siteName:    SITE_NAME,
+    images: [
+      {
+        url:    OG_IMAGE,
+        width:  1200,
+        height: 630,
+        alt:    'Nhà Bè Agri — Giao thương nông nghiệp minh bạch',
+      },
+    ],
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       TITLE,
+    description: DESC,
+    images:      [OG_IMAGE],
+  },
 }
 
 // ── Mock data (replace with Supabase query when ready) ─────────────────────

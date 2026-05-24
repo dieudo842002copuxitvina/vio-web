@@ -9,12 +9,20 @@ export interface LandListingGeo {
   ward:     Pick<Ward,     'id' | 'name' | 'name_full' | 'slug'> | null
 }
 
+export interface SellerProfile {
+  full_name:   string | null
+  avatar_url:  string | null
+  phone:       string | null
+  is_verified: boolean
+}
+
 export interface LandListingDetailResult {
   listing:    LandListing
   images:     { id: number; land_listing_id: string; image_url: string; sort_order: number; created_at: string }[]
   coverImage: string | null
   geo:        LandListingGeo
   nearby:     LandListing[]
+  profile:    SellerProfile | null
 }
 
 export async function getLandListingDetail(
@@ -23,11 +31,17 @@ export async function getLandListingDetail(
 ): Promise<LandListingDetailResult | null> {
   const { data: listing } = await supabase
     .from('land_listings')
-    .select('*')
+    .select('*, profiles(full_name, avatar_url, phone, is_verified)')
     .eq('slug', slug)
     .maybeSingle()
 
   if (!listing) return null
+
+  // Extract joined profile and normalize (Supabase returns object or array)
+  const rawProfile = (listing as any).profiles
+  const profile: SellerProfile | null = rawProfile
+    ? (Array.isArray(rawProfile) ? rawProfile[0] ?? null : rawProfile)
+    : null
 
   const [images, province, district, ward, nearby] = await Promise.all([
     getLandListingImages(supabase, listing.id),
@@ -63,5 +77,6 @@ export async function getLandListingDetail(
     coverImage,
     geo: { province, district, ward },
     nearby,
+    profile,
   }
 }

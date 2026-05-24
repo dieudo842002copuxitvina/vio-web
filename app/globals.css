@@ -1,7 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* ── Typography ─────────────────────────────────────────────────────────── */
+  /* Prioritises next/font Inter variable, then falls back through Apple's
+     SF Pro stack so the type feels native on every Apple device.           */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+               BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif;
+
+  /* ── VIO Brand Colours ──────────────────────────────────────────────────── */
+  /* vio-primary  — agricultural green, maps to iOS systemGreen               */
+  --color-vio-primary:      #34C759;
+  --color-vio-primary-dark: #30D158;   /* dark-mode variant                  */
+
+  /* vio-earth — warm terracotta/brown for soil, rural warmth                 */
+  --color-vio-earth:        #8B6654;
+  --color-vio-earth-light:  #C4A882;
+
+  /* vio-surface — off-white app background (iOS systemGroupedBackground)     */
+  --color-vio-surface:      #F2F2F7;
+  --color-vio-surface-dark: #000000;   /* dark-mode variant                  */
+
+  /* ── Shadows ────────────────────────────────────────────────────────────── */
+  /* apple-soft — whisper shadow for cards, avoids hard borders               */
+  --shadow-apple-soft: 0 4px 24px rgba(0, 0, 0, 0.04);
+  /* apple-card — slightly deeper for elevated modals/drawers                 */
+  --shadow-apple-card: 0 2px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  /* ── Extended Border Radius ─────────────────────────────────────────────── */
+  /* Tailwind v4 ships 2xl (1rem) and 3xl (1.5rem).
+     We add 4xl (2rem) for the signature VIO card rounding.                  */
+  --radius-4xl: 2rem;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -71,6 +99,25 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Utilities
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Hide scrollbar — use either class name, both are aliases */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Safe-area bottom padding — for sticky bars above iOS home indicator */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Base
    ───────────────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
@@ -88,8 +135,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Remove tap highlight on mobile */
-a, button { -webkit-tap-highlight-color: transparent; }
+/* Disable blue tap flash on all interactive elements (iOS native-app feel) */
+a, button, input, select, textarea, label, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
 
 a {
   color: var(--lagoon-deep);
