@@ -31,11 +31,35 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Bảo vệ toàn bộ /dashboard/* — redirect về home nếu chưa đăng nhập
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  const { pathname } = request.nextUrl
+
+  // ── Protected routes (dashboard + admin pages) ─────────────────────────
+  // All paths served by app/(dashboard)/layout.tsx which has its own server-
+  // side auth guard, but the proxy rejects unauthenticated requests earlier
+  // so the layout never renders for guests.
+  const PROTECTED = [
+    '/dashboard',
+    '/quan-ly-leads',
+    '/quan-ly',
+    '/dang-tin',
+  ]
+
+  const isProtected = PROTECTED.some(
+    p => pathname === p || pathname.startsWith(p + '/'),
+  )
+
+  if (!user && isProtected) {
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/'
-    redirectUrl.searchParams.set('next', request.nextUrl.pathname)
+    redirectUrl.pathname = '/dang-nhap'
+    redirectUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // ── Redirect authenticated users away from auth pages ──────────────────
+  if (user && (pathname === '/dang-nhap' || pathname === '/login' || pathname === '/dang-ky')) {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = '/dashboard'
+    redirectUrl.searchParams.delete('next')
     return NextResponse.redirect(redirectUrl)
   }
 
