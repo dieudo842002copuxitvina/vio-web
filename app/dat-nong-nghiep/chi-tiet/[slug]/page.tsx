@@ -1,14 +1,42 @@
-import { notFound }    from 'next/navigation'
+import { notFound }  from 'next/navigation'
 import type { Metadata } from 'next'
-import Link              from 'next/link'
-import { createClient }  from '@/lib/supabase/server'
-import { getLandListingDetail } from '@/features/land-listings/services/land-listing-detail'
-import { LAND_TYPE_LABELS } from '@/features/land-listings/types'
-import type { LandListing } from '@/features/land-listings/types'
+import Link            from 'next/link'
+import { createClient }          from '@/lib/supabase/server'
+import { getLandListingDetail }  from '@/features/land-listings/services/land-listing-detail'
+import { LAND_TYPE_LABELS }      from '@/features/land-listings/types'
+import type { LandListing }      from '@/features/land-listings/types'
+import { SellerCard }            from '@/components/seller-card'
 
 export const revalidate = 3600
 
-// ── generateMetadata ────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function normalizeCrops(value: unknown): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return (value as unknown[]).map(String).filter(Boolean)
+  if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean)
+  return []
+}
+
+function extractLatLng(listing: Record<string, unknown>): { lat: number; lng: number } | null {
+  const loc = listing.location as { type?: string; coordinates?: number[] } | undefined
+  if (loc?.type === 'Point' && Array.isArray(loc.coordinates) && loc.coordinates.length >= 2) {
+    const [lng, lat] = loc.coordinates
+    return { lat, lng }
+  }
+  if (typeof listing.lat === 'number' && typeof listing.lng === 'number') {
+    return { lat: listing.lat, lng: listing.lng }
+  }
+  if (typeof listing.coordinates_text === 'string') {
+    const parts = listing.coordinates_text.split(/[\s,]+/).map(parseFloat)
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      return { lat: parts[0], lng: parts[1] }
+    }
+  }
+  return null
+}
+
+// ── generateMetadata ──────────────────────────────────────────────────────────
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
@@ -23,7 +51,7 @@ export async function generateMetadata(
   const locationText  = locationParts.length ? ` tại ${locationParts.join(', ')}` : ''
   const title         = `${listing.title}${locationText}`
   const description   = listing.description
-    ?? `Đất nông nghiệp ${listing.land_type ? LAND_TYPE_LABELS[listing.land_type] : ''}${locationText}. ${listing.land_area_text ?? ''}`.trim()
+    ?? `Đất nông nghiệp${locationText}. ${listing.land_area_text ?? ''}`.trim()
 
   return {
     title,
@@ -38,236 +66,292 @@ export async function generateMetadata(
   }
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function LandListingDetailPage(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params
-  const supabase = await createClient()
-  const result   = await getLandListingDetail(supabase, slug)
+  const supabase  = await createClient()
+  const result    = await getLandListingDetail(supabase, slug)
   if (!result) notFound()
 
-  const { listing: l, images, geo, nearby } = result
+  const { listing: l, images, geo, nearby, profile } = result
+  const rawListing    = l as unknown as Record<string, unknown>
   const landTypeLabel = l.land_type ? LAND_TYPE_LABELS[l.land_type] : null
+  const locationText  = [geo.ward?.name_full, geo.district?.name_full, geo.province?.name_full]
+    .filter(Boolean).join(', ')
+  const crops      = normalizeCrops(rawListing.current_crops ?? l.crop_type)
+  const coords     = extractLatLng(rawListing)
+  const coverImage = images[0]?.image_url ?? null
+  const phone      = profile?.phone ?? l.phone
+
+  const specs: { icon: string; label: string; value: string }[] = (
+    [
+      l.land_area_text       && { icon: '📐', label: 'Diện tích',   value: l.land_area_text },
+      landTypeLabel          && { icon: '🌾', label: 'Loại đất',    value: landTypeLabel },
+      l.legal_status_text    && { icon: '📄', label: 'Pháp lý',     value: l.legal_status_text },
+      rawListing.soil_type   && { icon: '🪨', label: 'Chất đất',    value: String(rawListing.soil_type) },
+      rawListing.water_source && { icon: '💧', label: 'Nguồn nước', value: String(rawListing.water_source) },
+      crops.length === 1     && { icon: '🌿', label: 'Cây trồng',   value: crops[0] },
+    ] as (false | { icon: string; label: string; value: string })[]
+  ).filter(Boolean) as { icon: string; label: string; value: string }[]
 
   return (
     <>
       <main
-        className="max-w-5xl mx-auto px-4 md:px-8 pt-6"
-        style={{ paddingBottom: l.phone ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '3rem' }}
+        className="min-h-screen"
+        style={{ paddingBottom: phone ? 'calc(6rem + env(safe-area-inset-bottom, 0px))' : '3rem' }}
       >
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-[0.8125rem] text-gray-400 mb-6 flex-wrap">
-          <Link href="/" className="text-gray-400 no-underline hover:text-gray-600 transition-colors">Trang chủ</Link>
-          <span className="text-gray-300">/</span>
-          <Link href="/dat-nong-nghiep" className="text-gray-400 no-underline hover:text-gray-600 transition-colors">Đất nông nghiệp</Link>
-          {geo.province && (
-            <>
-              <span className="text-gray-300">/</span>
-              <Link href={`/dat-nong-nghiep/${geo.province.slug}`} className="text-gray-400 no-underline hover:text-gray-600 transition-colors">
-                {geo.province.name}
-              </Link>
-            </>
+
+        {/* ── Hero Gallery ── */}
+        <div className="relative h-[50vh] min-h-[280px] overflow-hidden rounded-b-[2rem] bg-gray-100 dark:bg-gray-900">
+          {coverImage ? (
+            <img
+              src={coverImage}
+              alt={l.title}
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="eager"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="select-none text-8xl opacity-10" aria-hidden="true">🌾</span>
+            </div>
           )}
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[200px]">{l.title}</span>
-        </nav>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px] gap-8 items-start">
+          {/* Back button */}
+          <Link
+            href="/dat-nong-nghiep"
+            className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white no-underline backdrop-blur-xl"
+            aria-label="Quay lại"
+          >
+            ←
+          </Link>
 
-          {/* ── Left column ── */}
-          <div>
-            {/* Cover image */}
-            {images.length > 0 && (
-              <div className="w-full overflow-hidden rounded-[2rem] shadow-[0_4px_24px_rgb(0,0,0,0.10)] mb-6 bg-gray-100 dark:bg-gray-800">
-                <img
-                  src={images[0].image_url}
-                  alt={l.title}
-                  width={760}
-                  height={440}
-                  className="w-full object-cover block"
-                  style={{ height: 'clamp(200px, 38vw, 440px)' }}
-                  loading="eager"
-                />
+          {l.legal_status_text && (
+            <span className="absolute bottom-4 left-4 rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-md">
+              {l.legal_status_text}
+            </span>
+          )}
+          {images.length > 1 && (
+            <span className="absolute bottom-4 right-4 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
+              {images.length} ảnh
+            </span>
+          )}
+        </div>
+
+        {/* Thumbnail strip */}
+        {images.length > 1 && (
+          <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-1 pt-3">
+            {images.slice(1, 7).map(img => (
+              <div key={img.id} className="h-[60px] w-20 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+                <img src={img.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
               </div>
-            )}
+            ))}
+          </div>
+        )}
 
-            {/* Image gallery */}
-            {images.length > 1 && (
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-                {images.slice(1).map(img => (
-                  <div key={img.id} className="shrink-0 w-24 h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                    <img src={img.image_url} alt="" width={96} height={72} className="w-full h-full object-cover" loading="lazy" />
+        {/* ── Content ── */}
+        <div className="mx-auto max-w-2xl space-y-6 px-4 pt-6">
+
+          {/* Breadcrumb */}
+          <nav className="flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-gray-400" aria-label="Breadcrumb">
+            <Link href="/" className="text-gray-400 no-underline transition-colors hover:text-gray-600">Trang chủ</Link>
+            <span className="text-gray-300" aria-hidden="true">/</span>
+            <Link href="/dat-nong-nghiep" className="text-gray-400 no-underline transition-colors hover:text-gray-600">Đất nông nghiệp</Link>
+            {geo.province && (
+              <>
+                <span className="text-gray-300" aria-hidden="true">/</span>
+                <Link
+                  href={`/dat-nong-nghiep/${geo.province.slug}`}
+                  className="text-gray-400 no-underline transition-colors hover:text-gray-600"
+                >
+                  {geo.province.name}
+                </Link>
+              </>
+            )}
+            <span className="text-gray-300" aria-hidden="true">/</span>
+            <span className="max-w-[200px] truncate font-medium text-gray-700">{l.title}</span>
+          </nav>
+
+          {/* Price + badges + title */}
+          <div>
+            {l.price_text && (
+              <p className="m-0 mb-2 text-[2.5rem] font-bold leading-none tracking-tight text-black dark:text-white">
+                {l.price_text}
+              </p>
+            )}
+            <div className="mb-3 flex flex-wrap gap-2">
+              {l.legal_status_text && (
+                <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  {l.legal_status_text}
+                </span>
+              )}
+              {landTypeLabel && (
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  {landTypeLabel}
+                </span>
+              )}
+              {l.is_featured && (
+                <span className="rounded-full bg-[#0071E3]/10 px-3 py-1 text-xs font-bold text-[#0071E3] dark:text-[#409CFF]">
+                  Nổi bật
+                </span>
+              )}
+            </div>
+            <h1 className="m-0 text-3xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
+              {l.title}
+            </h1>
+            {locationText && (
+              <p className="m-0 mt-2 text-[0.9375rem] text-gray-500 dark:text-gray-400">
+                📍 {locationText}
+              </p>
+            )}
+          </div>
+
+          {/* ── Bento Spec Grid ── */}
+          {specs.length > 0 && (
+            <div>
+              <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+                Thông số
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {specs.map(s => (
+                  <div key={s.label} className="rounded-2xl bg-gray-50 p-4 dark:bg-[#1C1C1E]">
+                    <p className="m-0 mb-1 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-gray-400">
+                      {s.icon} {s.label}
+                    </p>
+                    <p className="m-0 text-[0.9375rem] font-semibold leading-snug text-gray-900 dark:text-white">
+                      {s.value}
+                    </p>
                   </div>
                 ))}
               </div>
-            )}
-
-            {/* Tags + title */}
-            <div className="mb-5">
-              <div className="flex gap-1.5 flex-wrap mb-2">
-                {l.is_featured && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#0071E3]/10 text-[#0071E3] dark:text-[#409CFF] text-[0.625rem] font-bold tracking-wide uppercase">
-                    Nổi bật
-                  </span>
-                )}
-                {landTypeLabel && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#34C759]/10 dark:bg-[#30D158]/15 text-[#34C759] dark:text-[#30D158] text-[0.625rem] font-bold tracking-wide uppercase">
-                    {landTypeLabel}
-                  </span>
-                )}
-              </div>
-              <h1 className="m-0 text-[1.625rem] font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-                {l.title}
-              </h1>
             </div>
+          )}
 
-            {/* Spec grid */}
-            <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-[0_1px_6px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)] p-5 mb-5">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {l.land_area_text    && <SpecItem icon="📐" label="Diện tích" value={l.land_area_text} />}
-                {l.price_text        && <SpecItem icon="💰" label="Giá"       value={l.price_text} />}
-                {landTypeLabel       && <SpecItem icon="🌾" label="Loại đất"  value={landTypeLabel} />}
-                {l.crop_type         && <SpecItem icon="🌿" label="Cây trồng" value={l.crop_type} />}
-                {l.legal_status_text && <SpecItem icon="📄" label="Pháp lý"   value={l.legal_status_text} />}
-                {l.coordinates_text  && <SpecItem icon="📍" label="Tọa độ"    value={l.coordinates_text} />}
-              </div>
+          {/* ── Seller Card ── */}
+          {profile && (
+            <div>
+              <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+                Người bán
+              </p>
+              <SellerCard
+                fullName={profile.full_name}
+                avatarUrl={profile.avatar_url}
+                phone={profile.phone}
+                isVerified={profile.is_verified}
+              />
             </div>
+          )}
 
-            {/* Location */}
-            {(geo.province || geo.district || geo.ward) && (
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-[0_1px_6px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)] px-5 py-4 mb-5">
-                <p className="m-0 mb-1.5 text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-gray-400">Vị trí</p>
-                <p className="m-0 text-[0.9375rem] text-gray-900 dark:text-white font-medium">
-                  {[geo.ward?.name_full, geo.district?.name_full, geo.province?.name_full].filter(Boolean).join(', ')}
-                </p>
+          {/* ── Map View ── */}
+          {coords && (
+            <div>
+              <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+                Vị trí trên bản đồ
+              </p>
+              <div className="h-64 overflow-hidden rounded-3xl bg-gray-100 dark:bg-gray-800">
+                <iframe
+                  title="Vị trí lô đất"
+                  src={`https://www.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`}
+                  width="100%"
+                  height="100%"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="border-0"
+                />
               </div>
-            )}
+              <p className="m-0 mt-2 text-center text-xs text-gray-400">
+                {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+              </p>
+            </div>
+          )}
 
-            {/* Description */}
-            {l.description && (
-              <div className="mb-8">
-                <div className="flex items-center gap-3 mb-3">
-                  <h2 className="m-0 text-[1.0625rem] font-bold tracking-tight text-gray-900 dark:text-white shrink-0">Mô tả</h2>
-                  <div className="flex-1 h-px bg-gray-200/70 dark:bg-white/[0.07]" />
-                </div>
-                <p className="m-0 text-[0.9375rem] text-gray-500 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
-                  {l.description}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* ── Right sidebar — desktop only ── */}
-          <aside className="land-detail-sidebar sticky top-[72px]">
-            <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-[0_2px_12px_rgb(0,0,0,0.07)] dark:shadow-[0_2px_12px_rgb(0,0,0,0.3)] p-5">
-              <p className="m-0 mb-3 text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-gray-400">Liên hệ người bán</p>
-              {l.price_text && (
-                <p className="m-0 mb-4 text-[1.375rem] font-bold text-[#0071E3] dark:text-[#409CFF]">
-                  {l.price_text}
-                </p>
-              )}
-              {l.phone ? (
-                <div className="flex flex-col gap-2.5">
-                  <a
-                    href={`tel:${l.phone}`}
-                    className="flex items-center justify-center gap-2 h-11 rounded-full bg-[#0071E3] hover:bg-[#005BBB] active:opacity-75 text-white font-semibold text-[0.9375rem] no-underline transition-colors"
+          {/* Multiple crops tags */}
+          {crops.length > 1 && (
+            <div>
+              <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+                🌿 Cây trồng
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {crops.map(crop => (
+                  <span
+                    key={crop}
+                    className="rounded-full bg-green-50 px-3 py-1.5 text-sm font-medium text-green-800 dark:bg-green-900/20 dark:text-green-300"
                   >
-                    📞 Gọi Ngay
-                  </a>
-                  <a
-                    href={`https://zalo.me/${l.phone.replace(/^0/, '84')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 h-11 rounded-full bg-black/[0.06] dark:bg-white/[0.1] hover:bg-black/[0.1] active:opacity-75 text-gray-900 dark:text-white font-semibold text-[0.9375rem] no-underline transition-colors"
-                  >
-                    💬 Zalo
-                  </a>
-                </div>
-              ) : (
-                <p className="m-0 text-[0.875rem] text-gray-400">Thông tin liên hệ đang cập nhật.</p>
-              )}
+                    {crop}
+                  </span>
+                ))}
+              </div>
             </div>
-          </aside>
+          )}
+
+          {/* Description */}
+          {l.description && (
+            <div>
+              <p className="mb-3 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+                Mô tả
+              </p>
+              <p className="m-0 whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-gray-600 dark:text-gray-400">
+                {l.description}
+              </p>
+            </div>
+          )}
+
+          {/* ── Nearby listings ── */}
+          {nearby && nearby.length > 0 && (
+            <section aria-label="Đất nông nghiệp gần đây">
+              <div className="mb-4 flex items-center gap-3">
+                <h2 className="m-0 shrink-0 text-[1.0625rem] font-bold tracking-tight text-gray-900 dark:text-white">
+                  Đất gần đây
+                </h2>
+                <div className="h-px flex-1 bg-gray-200/70 dark:bg-white/[0.07]" />
+              </div>
+              <ul className="grid grid-cols-1 gap-3 list-none m-0 p-0 sm:grid-cols-2">
+                {nearby.map(n => <li key={n.id}><NearbyCard listing={n} /></li>)}
+              </ul>
+            </section>
+          )}
+
         </div>
-
-        {/* ── Nearby listings ── */}
-        {nearby.length > 0 && (
-          <section className="mt-10" aria-label="Đất gần đây">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="m-0 text-[1.0625rem] font-bold tracking-tight text-gray-900 dark:text-white shrink-0">
-                Đất nông nghiệp gần đây
-              </h2>
-              <div className="flex-1 h-px bg-gray-200/70 dark:bg-white/[0.07]" />
-            </div>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none m-0 p-0">
-              {nearby.map(n => <li key={n.id}><NearbyCard listing={n} /></li>)}
-            </ul>
-          </section>
-        )}
-
       </main>
 
-      {/* ── Mobile floating pill ── */}
-      {l.phone && (
+      {/* ── Sticky Action Bar ── */}
+      {phone && (
         <div
-          className="land-sticky-bar fixed bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none px-5"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          className="fixed bottom-0 z-50 w-full border-t border-gray-200 bg-white/80 p-4 backdrop-blur-xl dark:border-white/[0.08] dark:bg-black/80"
+          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
         >
-          <div className="pointer-events-auto flex gap-2 p-1.5 rounded-full backdrop-blur-2xl bg-white/80 dark:bg-black/80 shadow-[0_8px_32px_rgb(0,0,0,0.14)] border border-black/[0.06] dark:border-white/[0.08]">
-            <a
-              href={`tel:${l.phone}`}
-              className="flex items-center gap-1.5 px-5 h-11 rounded-full bg-[#0071E3] active:opacity-75 text-white font-semibold text-[0.9375rem] no-underline"
-            >
-              📞 Gọi Ngay
-            </a>
-            <a
-              href={`https://zalo.me/${l.phone.replace(/^0/, '84')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-5 h-11 rounded-full bg-black/[0.06] dark:bg-white/[0.15] active:opacity-75 text-gray-900 dark:text-white font-semibold text-[0.9375rem] no-underline"
-            >
-              💬 Zalo
-            </a>
-          </div>
+          <a
+            href={`tel:${phone}`}
+            className="flex w-full items-center justify-center rounded-full bg-black py-4 text-lg font-bold text-white no-underline transition-opacity active:opacity-70 dark:bg-white dark:text-black"
+          >
+            📞 Gọi Chủ Đất
+          </a>
         </div>
       )}
-
-      <style>{`
-        @media (min-width: 768px) { .land-sticky-bar { display: none !important; } }
-        @media (max-width: 767px) { .land-detail-sidebar { display: none !important; } }
-      `}</style>
     </>
   )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function SpecItem({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div>
-      <p className="m-0 mb-0.5 text-[0.6875rem] font-bold tracking-[0.08em] uppercase text-gray-400">{icon} {label}</p>
-      <p className="m-0 text-[0.9375rem] font-semibold text-gray-900 dark:text-white">{value}</p>
-    </div>
-  )
-}
+// ── NearbyCard ─────────────────────────────────────────────────────────────────
 
 function NearbyCard({ listing: n }: { listing: LandListing }) {
   const label = n.land_type ? LAND_TYPE_LABELS[n.land_type] : null
   return (
     <Link
       href={`/dat-nong-nghiep/chi-tiet/${n.slug}`}
-      className="flex flex-col gap-1.5 h-full p-4 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-[0_1px_6px_rgb(0,0,0,0.07)] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)] no-underline transition-transform duration-200 hover:scale-[1.02]"
+      className="flex h-full flex-col gap-1.5 rounded-2xl bg-white p-4 shadow-[0_1px_6px_rgb(0,0,0,0.07)] no-underline transition-transform duration-200 hover:scale-[1.02] dark:bg-[#1C1C1E] dark:shadow-[0_1px_6px_rgb(0,0,0,0.25)]"
     >
       {label && (
-        <span className="self-start px-2 py-0.5 rounded-full bg-[#34C759]/10 dark:bg-[#30D158]/15 text-[#34C759] dark:text-[#30D158] text-[0.625rem] font-bold tracking-wide uppercase">
+        <span className="self-start rounded-full bg-[#34C759]/10 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-[#34C759] dark:bg-[#30D158]/15 dark:text-[#30D158]">
           {label}
         </span>
       )}
-      <p className="m-0 font-semibold text-[0.875rem] text-gray-900 dark:text-white leading-snug">{n.title}</p>
+      <p className="m-0 text-[0.875rem] font-semibold leading-snug text-gray-900 dark:text-white">{n.title}</p>
       {n.price_text && (
-        <p className="mt-auto m-0 font-bold text-[0.875rem] text-[#34C759] dark:text-[#30D158]">{n.price_text}</p>
+        <p className="m-0 mt-auto font-bold text-[0.875rem] text-[#34C759] dark:text-[#30D158]">{n.price_text}</p>
       )}
     </Link>
   )
