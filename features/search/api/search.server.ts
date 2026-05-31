@@ -3,7 +3,6 @@
 import { unstable_cache }  from 'next/cache'
 import { createClient }    from '@/lib/supabase/server'
 import { normalizeVi, parseSearchIntent } from '@/entities/search/model/normalize'
-import type { SearchIntent }              from '@/entities/search/model/normalize'
 import type {
   SearchRankedHit,
   SearchResult,
@@ -38,9 +37,8 @@ export type SemanticSearchHit = SearchRankedHit & {
   retrieval_source: 'semantic' | 'hybrid'
 }
 
-// Re-export so existing callers don't need to change imports
+// Re-export runtime helpers so callers don't need to reach into the entity layer
 export { normalizeVi, parseSearchIntent }
-export type { SearchIntent }
 
 // ── universalSearch ───────────────────────────────────────────────────────────
 // Calls search_listings_hybrid() — one round-trip combining exact match,

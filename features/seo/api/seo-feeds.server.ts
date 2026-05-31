@@ -1,8 +1,7 @@
 'use server'
 
 import { unstable_cache }  from 'next/cache'
-import { createClient }    from '@/lib/supabase/server'
-import { searchListings }  from '@/features/search/api/search.server'
+import { createCachedClient } from '@/lib/supabase/server'
 
 // ── Row shape returned by the listings_featured_by_province MV ────────────────
 // Columns mirror migration 009. location_text is included for adapter compat.
@@ -41,7 +40,7 @@ const MV_COLS = [
 
 const _cachedNationalFeed = unstable_cache(
   async (limit: number): Promise<SEOFeedRow[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('listings_featured_by_province')
       .select(MV_COLS)
@@ -64,11 +63,20 @@ export async function getLandListingsSEO(
     return { items, total: items.length }
   } catch (err) {
     console.warn('[seo-feed-fallback] national:', (err as Error).message)
-    const result = await searchListings('', { type: 'land', limit })
-    return {
-      items: result.hits.map(h => ({ ...h, rn: 0 })) as SEOFeedRow[],
-      total: result.total,
-    }
+    // Fallback: direct public query — no cookie-based client to avoid
+    // triggering Next.js cookies()-in-cache-scope detection.
+    const supabase = createCachedClient()
+    const { data } = await supabase
+      .from('listings')
+      .select(MV_COLS)
+      .eq('type', 'land')
+      .eq('is_public', true)
+      .eq('moderation_status', 'approved')
+      .order('is_featured', { ascending: false })
+      .order('updated_at',  { ascending: false })
+      .limit(limit)
+    const items = (data ?? []) as unknown as SEOFeedRow[]
+    return { items, total: items.length }
   }
 }
 
@@ -86,7 +94,7 @@ const _cachedProvinceFeed = unstable_cache(
     type:       string,
     limit:      number,
   ): Promise<{ items: SEOFeedRow[]; total: number }> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, count, error } = await supabase
       .from('listings_featured_by_province')
       .select(MV_COLS, { count: 'exact' })
@@ -110,10 +118,20 @@ export async function getLandListingsByProvinceSEO(
     return await _cachedProvinceFeed(provinceId, type, limit)
   } catch (err) {
     console.warn('[seo-feed-fallback] province:', (err as Error).message)
-    const result = await searchListings('', { type, provinceId, limit })
+    const supabase = createCachedClient()
+    const { data, count } = await supabase
+      .from('listings')
+      .select(MV_COLS, { count: 'exact' })
+      .eq('type', type)
+      .eq('province_id', provinceId)
+      .eq('is_public', true)
+      .eq('moderation_status', 'approved')
+      .order('is_featured', { ascending: false })
+      .order('updated_at',  { ascending: false })
+      .limit(limit)
     return {
-      items: result.hits.map(h => ({ ...h, rn: 0 })) as SEOFeedRow[],
-      total: result.total,
+      items: (data ?? []) as unknown as SEOFeedRow[],
+      total: count ?? 0,
     }
   }
 }
@@ -131,7 +149,7 @@ interface SitemapRow {
 
 const _cachedSitemapFeed = unstable_cache(
   async (limit: number): Promise<SitemapRow[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('listings_featured_by_province')
       .select('slug, updated_at, is_featured')
@@ -150,7 +168,7 @@ export async function getLandSitemapFeedSEO(limit = 1_000): Promise<SitemapRow[]
     return await _cachedSitemapFeed(limit)
   } catch (err) {
     console.warn('[seo-feed-fallback] sitemap:', (err as Error).message)
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data } = await supabase
       .from('listings')
       .select('slug, updated_at, is_featured')
