@@ -2,11 +2,14 @@ import { notFound, redirect } from 'next/navigation'
 import type { Metadata }      from 'next'
 import Link                   from 'next/link'
 import { createClient }       from '@/lib/supabase/server'
-import { getLandListingsByProvince } from '@/features/land-listings/services/land-listings'
+import { LandListingCard }    from '@/entities/listing'
+import { listingToLandCard }  from '@/entities/listing'
 import { getPageState, getRobotsMeta } from '@/lib/seo/thin-page'
-import { LAND_TYPE_LABELS } from '@/features/land-listings/types'
-import type { LandListing }  from '@/features/land-listings/types'
-import type { Province }     from '@/lib/geo/types'
+import {
+  getLandListingsByProvinceSEO,
+  seoRowToListing,
+} from '@/features/seo/api/seo-feeds.server'
+import type { Province } from '@/lib/geo/types'
 
 export const revalidate = 3600
 
@@ -60,6 +63,8 @@ export async function generateMetadata(
 }
 
 // ── Page ────────────────────────────────────────────────────────────────────
+// Listings read from listings_featured_by_province MV via getLandListingsByProvinceSEO().
+// Falls back to search_listings_hybrid() if MV is unavailable (logged as [seo-feed-fallback]).
 
 export default async function LandProvincePage(
   { params }: { params: Promise<{ province: string }> },
@@ -72,8 +77,7 @@ export default async function LandProvincePage(
   const { province, redirectSlug } = result
   if (redirectSlug) redirect(`/dat-nong-nghiep/${redirectSlug}`, 301 as any)
 
-  const supabase = await createClient()
-  const { items: listings, total } = await getLandListingsByProvince(supabase, province.id)
+  const { items, total } = await getLandListingsByProvinceSEO(province.id, { type: 'land' })
 
   const pageState = getPageState('province', total)
   if (pageState === 'not-found') notFound()
@@ -121,12 +125,12 @@ export default async function LandProvincePage(
         )}
 
         {/* ── Listings grid ── */}
-        {listings.length > 0 ? (
+        {items.length > 0 ? (
           <section aria-label="Danh sách đất nông nghiệp">
             <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 list-none m-0 p-0">
-              {listings.map(listing => (
-                <li key={listing.id}>
-                  <LandListingCard listing={listing} />
+              {items.map(row => (
+                <li key={row.id}>
+                  <LandListingCard {...listingToLandCard(seoRowToListing(row))} />
                 </li>
               ))}
             </ul>
@@ -140,47 +144,5 @@ export default async function LandProvincePage(
 
       </main>
     </>
-  )
-}
-
-// ── LandListingCard ─────────────────────────────────────────────────────────
-
-function LandListingCard({ listing: l }: { listing: LandListing }) {
-  const landTypeLabel = l.land_type ? LAND_TYPE_LABELS[l.land_type] : null
-
-  return (
-    <Link
-      href={`/dat-nong-nghiep/chi-tiet/${l.slug}`}
-      className="group flex flex-col h-full p-4 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-[0_2px_8px_rgb(0,0,0,0.07)] dark:shadow-[0_2px_8px_rgb(0,0,0,0.25)] no-underline transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-    >
-      {/* Tags row */}
-      <div className="flex gap-1.5 flex-wrap mb-2">
-        {l.is_featured && (
-          <span className="px-2 py-0.5 rounded-full bg-[#0071E3]/10 text-[#0071E3] dark:text-[#409CFF] text-[0.625rem] font-bold tracking-wide uppercase">
-            Nổi bật
-          </span>
-        )}
-        {landTypeLabel && (
-          <span className="px-2 py-0.5 rounded-full bg-[#34C759]/10 dark:bg-[#30D158]/15 text-[#34C759] dark:text-[#30D158] text-[0.625rem] font-bold tracking-wide uppercase">
-            {landTypeLabel}
-          </span>
-        )}
-      </div>
-
-      <p className="m-0 font-semibold text-[0.9375rem] text-gray-900 dark:text-white leading-snug mb-2">
-        {l.title}
-      </p>
-
-      <div className="flex gap-3 text-[0.8125rem] text-gray-400 dark:text-gray-500 flex-wrap">
-        {l.land_area_text && <span>📐 {l.land_area_text}</span>}
-        {l.crop_type      && <span>🌿 {l.crop_type}</span>}
-      </div>
-
-      {l.price_text && (
-        <p className="mt-auto pt-2 m-0 font-bold text-[0.9375rem] text-[#34C759] dark:text-[#30D158]">
-          {l.price_text}
-        </p>
-      )}
-    </Link>
   )
 }

@@ -78,7 +78,7 @@ export default function NewStorefrontPage() {
       return
     }
 
-    router.push(`/ho-kinh-doanh/${slug}`)
+    router.push(`/doanh-nghiep/${slug}`)
   }
 
   return (
@@ -128,7 +128,7 @@ export default function NewStorefrontPage() {
             />
             {form.business_name && (
               <p className="text-[0.6875rem] text-[var(--muted)] mt-0.5">
-                URL: /ho-kinh-doanh/<span className="text-[var(--sea-ink-soft)]">{toSlug(form.business_name)}-…</span>
+                URL: /doanh-nghiep/<span className="text-[var(--sea-ink-soft)]">{toSlug(form.business_name)}-…</span>
               </p>
             )}
           </div>

@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient }  from '@/lib/supabase/server'
-import { LAND_TYPE_LABELS } from '@/features/land-listings/types'
-import type { LandType }    from '@/features/land-listings/types'
-import { ListingBrowser }   from './_components/listing-browser'
+import { getLandListingsSEO, seoRowToListing } from '@/features/seo/api/seo-feeds.server'
+import { listingToLandCard } from '@/entities/listing'
+import { ListingBrowser }    from './_components/listing-browser'
 import type { ListingEntry } from './_components/listing-browser'
 
 export const revalidate = 3600
@@ -40,69 +39,19 @@ function parsePriceTy(text: string | null | undefined): number {
   return 0
 }
 
-// ── DB row type (select chỉ lấy những cột cần thiết) ──────────────────────
-
-type RawRow = {
-  slug:              string
-  title:             string
-  price_text:        string | null
-  land_area_text:    string | null
-  land_type:         LandType | null
-  legal_status_text: string | null
-  province_id:       number | null
-  is_featured:       boolean
-  land_listing_images: Array<{ image_url: string; sort_order: number }> | null
-}
-
 // ── Data fetching ──────────────────────────────────────────────────────────
+// Reads from listings_featured_by_province MV (pre-filtered, pre-sorted).
+// Falls back to search_listings_hybrid() if MV is unavailable.
 
 async function fetchListings(): Promise<ListingEntry[]> {
-  const supabase = await createClient()
+  const { items } = await getLandListingsSEO(24)
 
-  const [listingsRes, provincesRes] = await Promise.all([
-    supabase
-      .from('land_listings')
-      .select(`
-        slug, title, price_text, land_area_text, land_type,
-        legal_status_text, province_id, is_featured,
-        land_listing_images ( image_url, sort_order )
-      `)
-      .eq('is_public', true)
-      .eq('moderation_status', 'approved')
-      .order('is_featured', { ascending: false })
-      .order('created_at',  { ascending: false })
-      .limit(24),
-
-    supabase.from('provinces').select('id, name, slug'),
-  ])
-
-  const rows      = (listingsRes.data ?? []) as RawRow[]
-  const provinces = provincesRes.data ?? []
-
-  const nameByPid = new Map(provinces.map(p => [p.id, p.name as string]))
-  const slugByPid = new Map(provinces.map(p => [p.id, p.slug as string]))
-
-  return rows.map((l): ListingEntry => {
-    const images   = (l.land_listing_images ?? []).sort((a, b) => a.sort_order - b.sort_order)
-    const coverUrl = images[0]?.image_url ?? null
-
-    return {
-      // ── card display props ──
-      slug:             l.slug,
-      title:            l.title,
-      price_text:       l.price_text,
-      land_area_text:   l.land_area_text,
-      location:         nameByPid.get(l.province_id ?? 0) ?? null,
-      land_type_label:  l.land_type ? LAND_TYPE_LABELS[l.land_type] : null,
-      legal_status:     l.legal_status_text,
-      image_url:        coverUrl,
-      is_featured:      l.is_featured,
-      // ── filter metadata ──
-      _province_slug:   slugByPid.get(l.province_id ?? 0) ?? '',
-      _land_type:       l.land_type ?? '',
-      _price_ty:        parsePriceTy(l.price_text),
-    }
-  })
+  return items.map(row => ({
+    ...listingToLandCard(seoRowToListing(row)),
+    _province_slug: '',
+    _land_type:     '',
+    _price_ty:      parsePriceTy(row.price_text),
+  }))
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────

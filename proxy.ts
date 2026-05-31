@@ -1,74 +1,68 @@
-import { createServerClient } from '@supabase/ssr'
+import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// ── Protected route prefixes ──────────────────────────────────────────────────
+const PROTECTED = [
+  '/dashboard',
+  '/quan-ly-leads',
+  '/quan-ly',
+  '/dang-tin',
+  '/ho-so',
+]
+
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          )
-          response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          )
-        },
-      },
-    },
-  )
-
-  // Bắt buộc dùng getUser() — validate JWT phía server.
-  // KHÔNG dùng getSession() ở proxy (không validate token).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // updateSession() creates a Supabase SSR client, refreshes the auth token if
+  // needed, and returns the response object that carries any new Set-Cookie
+  // headers.  We MUST return (or copy from) that response — never construct a
+  // plain NextResponse.next() after this call, or the refreshed token is lost.
+  const { supabaseResponse, user } = await updateSession(request)
 
   const { pathname } = request.nextUrl
-
-  // ── Protected routes (dashboard + admin pages) ─────────────────────────
-  // All paths served by app/(dashboard)/layout.tsx which has its own server-
-  // side auth guard, but the proxy rejects unauthenticated requests earlier
-  // so the layout never renders for guests.
-  const PROTECTED = [
-    '/dashboard',
-    '/quan-ly-leads',
-    '/quan-ly',
-    '/dang-tin',
-  ]
 
   const isProtected = PROTECTED.some(
     p => pathname === p || pathname.startsWith(p + '/'),
   )
 
+  // ── Redirect unauthenticated users away from protected routes ─────────────
   if (!user && isProtected) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/dang-nhap'
     redirectUrl.searchParams.set('next', pathname)
-    return NextResponse.redirect(redirectUrl)
+
+    const redirectResponse = NextResponse.redirect(redirectUrl)
+
+    // Copy refreshed session cookies so the token survives the redirect.
+    // Without this, a token refreshed during getUser() is silently dropped.
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) =>
+      redirectResponse.cookies.set(name, value, opts),
+    )
+
+    return redirectResponse
   }
 
-  // ── Redirect authenticated users away from auth pages ──────────────────
+  // ── Redirect authenticated users away from auth pages ────────────────────
   if (user && (pathname === '/dang-nhap' || pathname === '/login' || pathname === '/dang-ky')) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/dashboard'
     redirectUrl.searchParams.delete('next')
-    return NextResponse.redirect(redirectUrl)
+
+    const redirectResponse = NextResponse.redirect(redirectUrl)
+
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) =>
+      redirectResponse.cookies.set(name, value, opts),
+    )
+
+    return redirectResponse
   }
 
-  return response
+  // For all non-redirect paths, return supabaseResponse as-is so Set-Cookie
+  // headers from any token refresh are forwarded to the browser.
+  return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    // Chạy trên tất cả routes trừ static assets và Next.js internals
+    // Run on every route except Next.js internals and static file extensions.
     '/((?!_next/static|_next/image|favicon\\.ico|sitemap\\.xml|robots\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
   ],
 }

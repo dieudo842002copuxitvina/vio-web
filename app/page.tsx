@@ -1,241 +1,250 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import { LandListingCard } from '@/components/land-listing-card'
-import type { LandListingCardProps } from '@/components/land-listing-card'
-import { LandSearchAutocomplete } from '@/components/land-search-autocomplete'
+import type { Metadata }   from 'next'
+import Link                from 'next/link'
+import { createClient }    from '@/lib/supabase/server'
+import { LandListingCard, type LandListingCardProps, listingToLandCard } from '@/entities/listing'
+import { LandSearchAutocomplete }    from '@/features/search/ui/land-search-autocomplete'
+import { JsonLd }          from '@/shared/seo/JsonLd'
+import { websiteSchema }   from '@/lib/seo/schema'
+import { getFeaturedListings as _getFeaturedListings } from '@/entities/listing/api/listing.server'
 
-const SITE_NAME = 'Nhà Bè Agri'
-const TITLE     = 'Nhà Bè Agri | Nền tảng Giao thương Nông nghiệp & Bất động sản Địa phương'
-const DESC      = 'Khám phá và giao dịch đất nông nghiệp, rẫy sầu riêng, nhà vườn và nông sản trực tiếp từ chủ vườn. Nền tảng minh bạch, thông tin xác thực tại khu vực Nghĩa Trung, Đồng Nai và Đông Nam Bộ.'
-const OG_IMAGE  = 'https://picsum.photos/seed/nhabe-agri-og/1200/630'
+export const revalidate = 300
+
+// ── Metadata ──────────────────────────────────────────────────────────────────
+
+const SITE_NAME = 'VIO LOCAL'
+const TITLE     = 'VIO LOCAL | Nền tảng Giao thương Nông nghiệp & Bất động sản Địa phương'
+const DESC      = 'Khám phá và giao dịch đất nông nghiệp, sản phẩm nông nghiệp và hộ kinh doanh địa phương trên toàn Việt Nam. Kết nối trực tiếp với nông dân và đại lý chính thức.'
 
 export const metadata: Metadata = {
   title:       TITLE,
   description: DESC,
-  keywords: [
-    'Mua bán đất nông nghiệp',
-    'Đất rẫy Đồng Nai',
-    'Rẫy sầu riêng',
-    'Nhà vườn Nghĩa Trung',
-    'Nông sản Nhà Bè Agri',
-    'Giá đất nông nghiệp',
-    'Bất động sản nông thôn',
-  ],
   openGraph: {
-    title:       TITLE,
-    description: DESC,
-    type:        'website',
-    locale:      'vi_VN',
-    siteName:    SITE_NAME,
-    images: [
-      {
-        url:    OG_IMAGE,
-        width:  1200,
-        height: 630,
-        alt:    'Nhà Bè Agri — Giao thương nông nghiệp minh bạch',
-      },
-    ],
+    title: TITLE, description: DESC,
+    type: 'website', locale: 'vi_VN', siteName: SITE_NAME,
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: SITE_NAME }],
   },
-  twitter: {
-    card:        'summary_large_image',
-    title:       TITLE,
-    description: DESC,
-    images:      [OG_IMAGE],
-  },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESC, images: ['/og-image.jpg'] },
+  alternates: { canonical: '/' },
 }
 
-// ── Mock data (replace with Supabase query when ready) ─────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const FEATURED_LAND: LandListingCardProps[] = [
-  {
-    slug:            'vuon-ca-phe-2ha-cam-my-dong-nai',
-    title:           'Vườn Cà Phê 2ha Mặt Tiền Đường Nhựa',
-    price_text:      '2,8 tỷ',
-    land_area_text:  '20.000 m²',
-    location:        'Cẩm Mỹ, Đồng Nai',
-    legal_status:    'Sổ đỏ',
-    land_type_label: 'Cây lâu năm',
-    image_url:       'https://picsum.photos/seed/coffee-farm/600/400',
-    is_featured:     true,
-  },
-  {
-    slug:            'dat-lua-1ha-xuan-loc-dong-nai',
-    title:           'Đất Lúa 1ha Xuân Lộc, Gần Khu Công Nghiệp',
-    price_text:      '1,5 tỷ',
-    land_area_text:  '10.000 m²',
-    location:        'Xuân Lộc, Đồng Nai',
-    legal_status:    'Sổ hồng',
-    land_type_label: 'Đất lúa',
-    image_url:       'https://picsum.photos/seed/rice-paddy/600/400',
-    is_featured:     false,
-  },
-  {
-    slug:            'vuon-sau-rieng-3ha-dinh-quan',
-    title:           'Vườn Sầu Riêng 3ha Định Quán, Năng Suất Cao',
-    price_text:      '4,2 tỷ',
-    land_area_text:  '30.000 m²',
-    location:        'Định Quán, Đồng Nai',
-    legal_status:    'Sổ đỏ',
-    land_type_label: 'Cây ăn trái',
-    image_url:       'https://picsum.photos/seed/durian-orchard/600/400',
-    is_featured:     true,
-  },
+interface BusinessCard {
+  id:            string
+  slug:          string
+  business_name: string
+  description:   string | null
+  avatar_url:    string | null
+  is_verified:   boolean
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function getFeaturedListings(): Promise<LandListingCardProps[]> {
+  const rows = await _getFeaturedListings({ type: 'land', limit: 6 })
+  return rows.map(l => listingToLandCard(l))
+}
+
+async function getVerifiedBusinesses(): Promise<BusinessCard[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('storefronts')
+    .select('id, slug, business_name, description, avatar_url, is_verified')
+    .eq('is_public', true)
+    .eq('is_verified', true)
+    .order('created_at', { ascending: false })
+    .limit(6)
+
+  return (data ?? []) as BusinessCard[]
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+const FILTER_CHIPS = [
+  { label: 'Đất nông nghiệp', href: '/dat-nong-nghiep', icon: '🌾' },
+  { label: 'Đại lý gần đây',  href: '/doanh-nghiep',    icon: '🏪' },
+  { label: 'Sản phẩm VIO',    href: '/san-pham',         icon: '📦' },
 ]
 
-const DISTRICTS = [
-  { name: 'Cẩm Mỹ',     slug: 'cam-my',     emoji: '🌿', count: '120+' },
-  { name: 'Xuân Lộc',   slug: 'xuan-loc',   emoji: '🌾', count: '95+'  },
-  { name: 'Định Quán',  slug: 'dinh-quan',  emoji: '🌱', count: '80+'  },
-  { name: 'Thống Nhất', slug: 'thong-nhat', emoji: '☕', count: '60+'  },
+const AREA_LINKS = [
+  { name: 'Cẩm Mỹ',    href: '/dat-nong-nghiep/cam-my',    icon: '🌿', count: '120+' },
+  { name: 'Xuân Lộc',  href: '/dat-nong-nghiep/xuan-loc',  icon: '🌾', count: '95+'  },
+  { name: 'Định Quán', href: '/dat-nong-nghiep/dinh-quan', icon: '🌱', count: '80+'  },
+  { name: 'Thống Nhất',href: '/dat-nong-nghiep/thong-nhat',icon: '☕', count: '60+'  },
 ]
 
-// ── Page ───────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [listings, businesses] = await Promise.all([
+    getFeaturedListings(),
+    getVerifiedBusinesses(),
+  ])
+
   return (
     <main>
+      <JsonLd schema={websiteSchema()} />
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="relative flex items-center justify-center min-h-[70vh] overflow-hidden">
-
-        {/* Background — nature cover photo */}
+      {/* ── Hero ── */}
+      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden">
         <img
           src="https://picsum.photos/seed/vietnam-countryside/1400/900"
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/45 to-black/70" />
 
-        {/* Gradient overlay — dark at bottom for readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/45 to-black/65" />
-
-        {/* Content */}
-        <div className="relative z-10 text-center px-4 max-w-2xl mx-auto w-full">
-
-          {/* Kicker badge */}
-          <span className="inline-flex items-center mb-5 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-[0.6875rem] font-bold tracking-[0.1em] uppercase select-none">
-            Nền tảng thương mại địa phương
+        <div className="relative z-10 mx-auto w-full max-w-2xl px-4 text-center">
+          <span className="mb-5 inline-flex items-center rounded-full bg-white/15 px-3.5 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-white/90 backdrop-blur-sm select-none">
+            Nền tảng giao thương địa phương
           </span>
 
-          {/* Display headline */}
-          <h1 className="text-[2.5rem] sm:text-[3.25rem] lg:text-[4rem] font-bold tracking-tight leading-[1.06] text-white mb-5">
+          <h1 className="mb-5 text-[2.5rem] font-bold leading-[1.06] tracking-tight text-white sm:text-[3.25rem] lg:text-[4rem]">
             Khám phá Giao thương<br />
             <span className="text-[#34C759]">Nông thôn</span>
           </h1>
 
-          {/* Sub-headline */}
-          <p className="text-white/75 text-[1.0625rem] mb-9 leading-relaxed max-w-sm mx-auto">
+          <p className="mx-auto mb-8 max-w-sm text-[1.0625rem] leading-relaxed text-white/75">
             Kết nối trực tiếp với nông dân và hộ kinh doanh trên toàn 63 tỉnh thành.
           </p>
 
-          {/* Land search — pill input, searches land_listings */}
-          <LandSearchAutocomplete
-            placeholder="Tìm kiếm đất nông nghiệp..."
-            className="max-w-[500px] mx-auto"
-          />
-        </div>
-      </section>
-
-      {/* ── Đất Nông Nghiệp Nổi Bật ──────────────────────────────────────── */}
-      <section className="py-16 px-4">
-        <div className="max-w-5xl mx-auto">
-
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <h2 className="m-0 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Đất Nông Nghiệp Nổi Bật
-            </h2>
-            <Link
-              href="/dat-nong-nghiep"
-              className="text-[0.875rem] font-medium text-[#0071E3] dark:text-[#409CFF] no-underline hover:opacity-70 transition-opacity whitespace-nowrap"
-            >
-              Xem tất cả
-            </Link>
+          {/* Glassmorphism search */}
+          <div className="mx-auto max-w-[500px]">
+            <LandSearchAutocomplete
+              placeholder="Tìm kiếm đất nông nghiệp..."
+              className="w-full"
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {FEATURED_LAND.map(land => (
-              <LandListingCard key={land.slug} {...land} />
+          {/* Quick filter chips */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            {FILTER_CHIPS.map(chip => (
+              <Link
+                key={chip.href}
+                href={chip.href}
+                className={[
+                  'flex items-center gap-1.5 rounded-full px-4 py-2',
+                  'bg-white/15 text-[0.8125rem] font-semibold text-white no-underline backdrop-blur-md',
+                  'border border-white/20 transition-colors hover:bg-white/25',
+                ].join(' ')}
+              >
+                <span aria-hidden="true">{chip.icon}</span>
+                {chip.label}
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Khám phá Khu vực — Bento Grid ────────────────────────────────── */}
-      <section className="pb-24 px-4">
-        <div className="max-w-5xl mx-auto">
+      {/* ── Đất Nông Nghiệp Nổi Bật ── */}
+      {listings.length > 0 && (
+        <section className="px-4 py-16">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <h2 className="m-0 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Đất Nông Nghiệp Nổi Bật
+              </h2>
+              <Link
+                href="/dat-nong-nghiep"
+                className="text-[0.875rem] font-medium text-[#0071E3] no-underline transition-opacity hover:opacity-70 dark:text-[#409CFF]"
+              >
+                Xem tất cả →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              {listings.map(l => <LandListingCard key={l.slug} {...l} />)}
+            </div>
+          </div>
+        </section>
+      )}
 
-          <div className="flex items-center justify-between gap-3 mb-6">
+      {/* ── Đại lý xác thực ── */}
+      {businesses.length > 0 && (
+        <section className="bg-gray-50/60 px-4 py-16 dark:bg-[#141414]">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <h2 className="m-0 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Đại lý xác thực
+              </h2>
+              <Link
+                href="/doanh-nghiep"
+                className="text-[0.875rem] font-medium text-[#0071E3] no-underline transition-opacity hover:opacity-70 dark:text-[#409CFF]"
+              >
+                Tất cả đại lý →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {businesses.map(b => (
+                <Link
+                  key={b.id}
+                  href={`/doanh-nghiep/${b.slug}`}
+                  className="flex items-center gap-4 rounded-3xl bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.06)] no-underline transition-transform duration-200 hover:scale-[1.02] dark:bg-[#1C1C1E]"
+                >
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                    {b.avatar_url
+                      ? <img src={b.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      : <div className="flex h-full w-full items-center justify-center text-2xl select-none">🏪</div>
+                    }
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="m-0 truncate font-semibold text-gray-900 dark:text-white">{b.business_name}</p>
+                    {b.is_verified && (
+                      <p className="m-0 mt-0.5 text-[0.75rem] font-semibold text-[#34C759]">✓ Đã xác thực</p>
+                    )}
+                    {b.description && (
+                      <p className="m-0 mt-0.5 line-clamp-1 text-[0.8125rem] text-gray-500">{b.description}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Khám phá khu vực — Bento grid ── */}
+      <section className="px-4 pb-24 pt-16">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-6 flex items-center justify-between gap-3">
             <h2 className="m-0 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
               Khám phá Khu vực
             </h2>
-            <Link
-              href="/dong-nai"
-              className="text-[0.875rem] font-medium text-[#0071E3] dark:text-[#409CFF] no-underline hover:opacity-70 transition-opacity whitespace-nowrap"
-            >
-              Tỉnh Đồng Nai
-            </Link>
           </div>
-
-          {/*
-            Bento layout:
-            mobile  — 2×2 equal grid
-            desktop — col 1 spans 2 rows (tall) | col 2-3 top wide | col 2-3 bottom split
-            ┌─────────────┬───────────────────────┐
-            │  Cẩm Mỹ    │      Xuân Lộc         │
-            │  (tall)     ├───────────┬───────────┤
-            │             │ Định Quán │ Thống Nhất│
-            └─────────────┴───────────┴───────────┘
-          */}
-          <div className="grid grid-cols-2 md:grid-cols-3 auto-rows-[152px] gap-3">
-
-            {/* Cẩm Mỹ — tall left */}
+          <div className="grid auto-rows-[152px] grid-cols-2 gap-3 md:grid-cols-3">
             <Link
-              href="/dong-nai/cam-my"
-              className="col-span-1 md:row-span-2 flex flex-col justify-between p-5 rounded-[2rem] bg-gray-100 dark:bg-[#1C1C1E] no-underline transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-[0_1px_4px_rgb(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgb(0,0,0,0.25)]"
+              href={AREA_LINKS[0].href}
+              className="col-span-1 flex flex-col justify-between rounded-[2rem] bg-gray-100 p-5 no-underline shadow-[0_1px_4px_rgb(0,0,0,0.06)] transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] dark:bg-[#1C1C1E] md:row-span-2"
             >
-              <span className="text-3xl select-none" aria-hidden="true">🌿</span>
+              <span className="select-none text-3xl" aria-hidden="true">{AREA_LINKS[0].icon}</span>
               <div>
-                <p className="m-0 font-bold text-[1rem] text-gray-900 dark:text-white">Cẩm Mỹ</p>
-                <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-0.5">120+ tin đất</p>
+                <p className="m-0 text-[1rem] font-bold text-gray-900 dark:text-white">{AREA_LINKS[0].name}</p>
+                <p className="m-0 mt-0.5 text-xs text-gray-500 dark:text-gray-400">{AREA_LINKS[0].count} tin đất</p>
               </div>
             </Link>
-
-            {/* Xuân Lộc — wide right top */}
             <Link
-              href="/dong-nai/xuan-loc"
-              className="col-span-1 md:col-span-2 flex items-center gap-4 p-5 rounded-[2rem] bg-gray-100 dark:bg-[#1C1C1E] no-underline transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-[0_1px_4px_rgb(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgb(0,0,0,0.25)]"
+              href={AREA_LINKS[1].href}
+              className="col-span-1 flex items-center gap-4 rounded-[2rem] bg-gray-100 p-5 no-underline shadow-[0_1px_4px_rgb(0,0,0,0.06)] transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] dark:bg-[#1C1C1E] md:col-span-2"
             >
-              <span className="text-3xl select-none" aria-hidden="true">🌾</span>
+              <span className="select-none text-3xl" aria-hidden="true">{AREA_LINKS[1].icon}</span>
               <div>
-                <p className="m-0 font-bold text-[1rem] text-gray-900 dark:text-white">Xuân Lộc</p>
-                <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-0.5">95+ tin đất</p>
+                <p className="m-0 text-[1rem] font-bold text-gray-900 dark:text-white">{AREA_LINKS[1].name}</p>
+                <p className="m-0 mt-0.5 text-xs text-gray-500 dark:text-gray-400">{AREA_LINKS[1].count} tin đất</p>
               </div>
             </Link>
-
-            {/* Định Quán — bottom center */}
-            <Link
-              href="/dong-nai/dinh-quan"
-              className="col-span-1 flex flex-col justify-between p-5 rounded-[2rem] bg-gray-100 dark:bg-[#1C1C1E] no-underline transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-[0_1px_4px_rgb(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgb(0,0,0,0.25)]"
-            >
-              <span className="text-3xl select-none" aria-hidden="true">🌱</span>
-              <div>
-                <p className="m-0 font-bold text-[1rem] text-gray-900 dark:text-white">Định Quán</p>
-                <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-0.5">80+ tin đất</p>
-              </div>
-            </Link>
-
-            {/* Thống Nhất — bottom right */}
-            <Link
-              href="/dong-nai/thong-nhat"
-              className="col-span-1 flex flex-col justify-between p-5 rounded-[2rem] bg-gray-100 dark:bg-[#1C1C1E] no-underline transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-[0_1px_4px_rgb(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgb(0,0,0,0.25)]"
-            >
-              <span className="text-3xl select-none" aria-hidden="true">☕</span>
-              <div>
-                <p className="m-0 font-bold text-[1rem] text-gray-900 dark:text-white">Thống Nhất</p>
-                <p className="m-0 text-xs text-gray-500 dark:text-gray-400 mt-0.5">60+ tin đất</p>
-              </div>
-            </Link>
-
+            {AREA_LINKS.slice(2).map(a => (
+              <Link
+                key={a.href}
+                href={a.href}
+                className="col-span-1 flex flex-col justify-between rounded-[2rem] bg-gray-100 p-5 no-underline shadow-[0_1px_4px_rgb(0,0,0,0.06)] transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] dark:bg-[#1C1C1E]"
+              >
+                <span className="select-none text-3xl" aria-hidden="true">{a.icon}</span>
+                <div>
+                  <p className="m-0 text-[1rem] font-bold text-gray-900 dark:text-white">{a.name}</p>
+                  <p className="m-0 mt-0.5 text-xs text-gray-500 dark:text-gray-400">{a.count} tin đất</p>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

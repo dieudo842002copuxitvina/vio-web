@@ -19,17 +19,21 @@ export interface StorefrontDetail {
 
 export interface GeoRef    { id: number; name: string; name_full: string; slug: string }
 export interface ProductRef { id: string; slug: string; title: string; price_text: string | null; is_featured: boolean }
-export interface ServiceRef { id: string; slug: string; title: string; service_area_text: string | null }
+export interface ServiceRef { id: string; slug: string; title: string; service_area_text: string | null; price_text: string | null }
 export interface NearbyRef  { id: string; slug: string; business_name: string; avatar_url: string | null; is_verified: boolean }
+export interface ReviewRef  { id: string; rating: number; comment: string | null; reviewer_name: string | null; created_at: string }
 
 export interface StorefrontDetailResult {
-  storefront: StorefrontDetail
-  province:   GeoRef | null
-  district:   GeoRef | null
-  ward:       GeoRef | null
-  products:   ProductRef[]
-  services:   ServiceRef[]
-  nearby:     NearbyRef[]
+  storefront:     StorefrontDetail
+  province:       GeoRef | null
+  district:       GeoRef | null
+  ward:           GeoRef | null
+  products:       ProductRef[]
+  services:       ServiceRef[]
+  nearby:         NearbyRef[]
+  reviews:        ReviewRef[]
+  review_count:   number
+  average_rating: number | null
 }
 
 const SF_COLS  = 'id, slug, business_name, description, phone, zalo_url, facebook_url, tiktok_url, avatar_url, cover_image_url, is_verified, province_id, district_id, ward_id'
@@ -51,7 +55,7 @@ export async function getStorefrontDetail(
 
   const sf = raw as StorefrontDetail
 
-  const [provRes, distRes, wardRes, prodRes, svcRes, nearbyRes] = await Promise.all([
+  const [provRes, distRes, wardRes, prodRes, svcRes, nearbyRes, reviewRes] = await Promise.all([
     sf.province_id
       ? supabase.from('provinces').select(GEO_COLS).eq('id', sf.province_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -65,19 +69,23 @@ export async function getStorefrontDetail(
       : Promise.resolve({ data: null, error: null }),
 
     supabase
-      .from('products')
+      .from('listings')
       .select('id, slug, title, price_text, is_featured')
+      .eq('type', 'product')
       .eq('storefront_id', sf.id)
-      .eq('is_available', true)
+      .eq('is_public', true)
+      .eq('status', 'published')
       .order('is_featured', { ascending: false })
-      .order('created_at',  { ascending: false })
+      .order('updated_at',  { ascending: false })
       .limit(12),
 
     supabase
-      .from('services')
-      .select('id, slug, title, service_area_text')
+      .from('listings')
+      .select('id, slug, title, location_text, price_text')
+      .eq('type', 'service')
       .eq('storefront_id', sf.id)
-      .eq('is_available', true)
+      .eq('is_public', true)
+      .eq('status', 'published')
       .limit(12),
 
     sf.district_id
@@ -90,6 +98,13 @@ export async function getStorefrontDetail(
           .order('is_verified', { ascending: false })
           .limit(6)
       : Promise.resolve({ data: [], error: null }),
+
+    supabase
+      .from('reviews')
+      .select('id, rating, comment, reviewer_name, created_at')
+      .eq('storefront_id', sf.id)
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
   if (provRes.error)   throw provRes.error
@@ -99,13 +114,22 @@ export async function getStorefrontDetail(
   if (svcRes.error)    throw svcRes.error
   if (nearbyRes.error) throw nearbyRes.error
 
+  const reviews     = (reviewRes.data as ReviewRef[]) ?? []
+  const total       = reviews.reduce((sum, r) => sum + r.rating, 0)
+  const avgRating   = reviews.length > 0 ? Math.round((total / reviews.length) * 10) / 10 : null
+
   return {
-    storefront: sf,
-    province:   (provRes.data as GeoRef | null) ?? null,
-    district:   (distRes.data as GeoRef | null) ?? null,
-    ward:       (wardRes.data as GeoRef | null) ?? null,
-    products:   (prodRes.data   as ProductRef[]) ?? [],
-    services:   (svcRes.data    as ServiceRef[]) ?? [],
-    nearby:     (nearbyRes.data as NearbyRef[])  ?? [],
+    storefront:     sf,
+    province:       (provRes.data as GeoRef | null) ?? null,
+    district:       (distRes.data as GeoRef | null) ?? null,
+    ward:           (wardRes.data as GeoRef | null) ?? null,
+    products: ((prodRes.data ?? []) as Array<{ id: string; slug: string; title: string; price_text: string | null; is_featured: boolean }>)
+      .map(r => ({ id: r.id, slug: r.slug, title: r.title, price_text: r.price_text, is_featured: r.is_featured })),
+    services: ((svcRes.data ?? []) as Array<{ id: string; slug: string; title: string; location_text: string | null; price_text: string | null }>)
+      .map(r => ({ id: r.id, slug: r.slug, title: r.title, service_area_text: r.location_text, price_text: r.price_text })),
+    nearby:         (nearbyRes.data as NearbyRef[])  ?? [],
+    reviews,
+    review_count:   reviews.length,
+    average_rating: avgRating,
   }
 }

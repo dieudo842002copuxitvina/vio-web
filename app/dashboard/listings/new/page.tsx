@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { LAND_TYPE_LABELS } from '@/features/land-listings/types'
-import type { LandType } from '@/features/land-listings/types'
+import { LAND_TYPE_LABELS } from '@/entities/listing'
+import type { LandType } from '@/entities/listing'
 
 function toSlug(str: string): string {
   return str
@@ -69,29 +69,39 @@ export default function NewLandListingPage() {
     if (!user) { router.push('/dang-nhap'); return }
 
     setLoading(true)
-    const { error: insertError } = await supabase
-      .from('land_listings')
+    const { data: listing, error: insertError } = await supabase
+      .from('listings')
       .insert({
+        type:              'land',
         owner_id:          user.id,
         slug,
         title:             form.title.trim(),
-        description:       form.description.trim()       || null,
-        land_type:         form.land_type                || null,
-        land_area_text:    form.land_area_text.trim()    || null,
-        price_text:        form.price_text.trim()        || null,
-        crop_type:         form.crop_type.trim()         || null,
-        legal_status_text: form.legal_status_text.trim() || null,
-        coordinates_text:  form.coordinates_text.trim()  || null,
-        phone:             form.phone.trim()             || null,
+        description:       form.description.trim()  || null,
+        price_text:        form.price_text.trim()   || null,
+        contact_phone:     form.phone.trim()        || null,
+        status:            'draft',
         is_public:         false,
         moderation_status: 'pending',
       })
-    setLoading(false)
+      .select('id')
+      .single()
 
     if (insertError) {
+      setLoading(false)
       setError(insertError.message)
       return
     }
+
+    const attrRows = [
+      form.land_area_text.trim()    ? { listing_id: listing.id, key: 'area_m2',       value_text: form.land_area_text.trim() }    : null,
+      form.land_type                ? { listing_id: listing.id, key: 'land_type',     value_text: form.land_type }                : null,
+      form.legal_status_text.trim() ? { listing_id: listing.id, key: 'legal_status',  value_text: form.legal_status_text.trim() } : null,
+      form.crop_type.trim()         ? { listing_id: listing.id, key: 'current_crops', value_text: form.crop_type.trim() }         : null,
+      form.coordinates_text.trim()  ? { listing_id: listing.id, key: 'coordinates',   value_text: form.coordinates_text.trim() }  : null,
+    ].filter(Boolean)
+    if (attrRows.length) await supabase.from('listing_attribute_values').insert(attrRows)
+
+    setLoading(false)
 
     router.push(`/dat-nong-nghiep/chi-tiet/${slug}`)
   }

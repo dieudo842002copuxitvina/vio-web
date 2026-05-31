@@ -13,7 +13,7 @@ interface StorefrontCardProps {
 export function StorefrontCard({ storefront: sf }: StorefrontCardProps) {
   return (
     <Link
-      href={`/ho-kinh-doanh/${sf.slug}`}
+      href={`/doanh-nghiep/${sf.slug}`}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-[#1C1C1E] no-underline shadow-[0_2px_8px_rgb(0,0,0,0.08)] dark:shadow-[0_2px_8px_rgb(0,0,0,0.3)] transition-[transform,box-shadow] duration-200 hover:shadow-[0_6px_20px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_6px_20px_rgb(0,0,0,0.45)] active:scale-[0.98]"
     >
       {/* ── Cover area — image bleeds to top edge ── */}
