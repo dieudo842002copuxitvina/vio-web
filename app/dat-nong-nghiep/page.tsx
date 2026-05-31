@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getLandListingsSEO, seoRowToListing } from '@/features/seo/api/seo-feeds.server'
+import { getLandListingsSEO }   from '@/features/seo/api/seo-feeds.server'
+import { seoRowToListing }      from '@/features/seo/api/seo-utils'
 import { listingToLandCard } from '@/entities/listing'
 import { ListingBrowser }    from './_components/listing-browser'
 import type { ListingEntry } from './_components/listing-browser'

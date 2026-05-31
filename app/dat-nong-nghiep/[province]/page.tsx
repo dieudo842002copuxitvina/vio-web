@@ -5,10 +5,8 @@ import { createClient }       from '@/lib/supabase/server'
 import { LandListingCard }    from '@/entities/listing'
 import { listingToLandCard }  from '@/entities/listing'
 import { getPageState, getRobotsMeta } from '@/lib/seo/thin-page'
-import {
-  getLandListingsByProvinceSEO,
-  seoRowToListing,
-} from '@/features/seo/api/seo-feeds.server'
+import { getLandListingsByProvinceSEO } from '@/features/seo/api/seo-feeds.server'
+import { seoRowToListing }              from '@/features/seo/api/seo-utils'
 import type { Province } from '@/lib/geo/types'
 
 export const revalidate = 3600

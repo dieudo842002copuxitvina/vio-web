@@ -3,7 +3,6 @@
 import { unstable_cache }  from 'next/cache'
 import { createClient }    from '@/lib/supabase/server'
 import { searchListings }  from '@/features/search/api/search.server'
-import type { Listing }    from '@/entities/listing'
 
 // ── Row shape returned by the listings_featured_by_province MV ────────────────
 // Columns mirror migration 009. location_text is included for adapter compat.
@@ -33,11 +32,6 @@ const MV_COLS = [
   'location_text', 'is_featured', 'is_verified', 'updated_at', 'rn',
 ].join(', ')
 
-// MV columns cover every field that listingToLandCard() reads, so the cast
-// is safe at runtime even though the broader Listing type has extra columns.
-export function seoRowToListing(row: SEOFeedRow): Listing {
-  return row as unknown as Listing
-}
 
 // ── getLandListingsSEO ─────────────────────────────────────────────────────────
 // National browse page (/dat-nong-nghiep).

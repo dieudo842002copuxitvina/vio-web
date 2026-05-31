@@ -137,7 +137,7 @@ const _getMerchantMetrics = unstable_cache(
   { revalidate: 300, tags: ['merchant_metrics'] },
 )
 
-export function getMerchantMetrics(profileId: string): Promise<MerchantMetrics | null> {
+export async function getMerchantMetrics(profileId: string): Promise<MerchantMetrics | null> {
   return _getMerchantMetrics(profileId)
 }
 
@@ -365,7 +365,7 @@ const _getListingPerformances = unstable_cache(
   { revalidate: 300, tags: ['listing_performance', 'listings'] },
 )
 
-export function getListingPerformances(
+export async function getListingPerformances(
   profileId: string,
   limit = 20,
   cursor?:   string,

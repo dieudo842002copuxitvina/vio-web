@@ -393,7 +393,7 @@ const _getDiscoveryItems = unstable_cache(
   { revalidate: 900, tags: ['search'] },
 )
 
-export function getDiscoveryItems(
+export async function getDiscoveryItems(
   context:     DiscoveryContext,
   provinceId?: number,
 ): Promise<DiscoveryItem[]> {
@@ -417,7 +417,7 @@ const _getTrendingSearches = unstable_cache(
   { revalidate: 3600, tags: ['search'] },
 )
 
-export function getTrendingSearches(): Promise<string[]> {
+export async function getTrendingSearches(): Promise<string[]> {
   return _getTrendingSearches()
 }
 
