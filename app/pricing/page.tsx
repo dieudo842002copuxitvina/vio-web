@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 // ── Feature comparison table ──────────────────────────────────────────────────
 
-const COMPARISON_ROWS = [
+const COMPARISON_ROWS: Array<{ label: string; free: string; pro: string }> = [
   { label: 'Tin đăng',                       free: '10',        pro: '100'      },
   { label: 'Phân tích lịch sử',               free: '7 ngày',    pro: '30 ngày'  },
   { label: 'CRM Leads',                       free: '✓',         pro: '✓'        },
@@ -19,7 +19,7 @@ const COMPARISON_ROWS = [
   { label: 'Smart Matching',                  free: '—',         pro: '✓'        },
   { label: 'Featured Listing (ưu tiên)',       free: '—',         pro: '✓'        },
   { label: 'Merchant Insights đầy đủ',        free: '—',         pro: '✓'        },
-] as const
+]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

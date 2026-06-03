@@ -5,12 +5,15 @@
 // All functions use createAdminClient() (service role key) to bypass RLS.
 // NEVER import this file in client components.
 //
+// Cache invalidation: uses revalidatePath for dashboard routes.
+// Billing/subscription data has a 5-min unstable_cache TTL separately.
+//
 // grantPro              — upsert active Pro subscription for a profile
 // revokePro             — cancel Pro → downgrade to Free
 // activateFeaturedListing   — create/activate a featured slot for a listing
 // deactivateFeaturedListing — cancel a featured slot
 
-import { revalidateTag }     from 'next/cache'
+import { revalidatePath }  from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 
 // ── grantPro ──────────────────────────────────────────────────────────────────
@@ -18,7 +21,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 export async function grantPro(
   profileId:    string,
   adminId:      string,
-  durationDays?: number,  // undefined = no expiry
+  durationDays?: number,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = await createAdminClient()
@@ -43,7 +46,7 @@ export async function grantPro(
       )
 
     if (error) return { ok: false, error: error.message }
-    revalidateTag('billing')
+    revalidatePath('/dashboard')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
@@ -71,7 +74,7 @@ export async function revokePro(
       .eq('status',     'active')
 
     if (error) return { ok: false, error: error.message }
-    revalidateTag('billing')
+    revalidatePath('/dashboard')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
@@ -107,8 +110,8 @@ export async function activateFeaturedListing(
       )
 
     if (error) return { ok: false, error: error.message }
-    revalidateTag('billing')
-    revalidateTag('listings')
+    revalidatePath('/dat-nong-nghiep')
+    revalidatePath('/')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
@@ -127,11 +130,11 @@ export async function deactivateFeaturedListing(
       .from('featured_listings')
       .update({ status: 'cancelled' })
       .eq('listing_id', listingId)
-      .eq('status', 'active')
+      .eq('status',     'active')
 
     if (error) return { ok: false, error: error.message }
-    revalidateTag('billing')
-    revalidateTag('listings')
+    revalidatePath('/dat-nong-nghiep')
+    revalidatePath('/')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
