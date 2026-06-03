@@ -1,4 +1,5 @@
 import { notFound }          from 'next/navigation'
+import { Suspense }           from 'react'
 import type { Metadata }      from 'next'
 import Link                   from 'next/link'
 import { createClient }       from '@/lib/supabase/server'
@@ -6,6 +7,7 @@ import {
   getListingDetail,
 }                             from '@/entities/listing/api/listing.server'
 import type { Listing }       from '@/entities/listing'
+import { SimilarListings }    from '@/features/recommendation/components/SimilarListings'
 
 export const revalidate = 3600
 
@@ -349,6 +351,15 @@ export default async function LandDetailPage(
               </ul>
             </section>
           )}
+
+          {/* ── Similar listings (Recommendation Engine) ── */}
+          <Suspense fallback={null}>
+            <SimilarListings
+              listingId={l.id}
+              provinceId={l.province_id}
+              categoryId={l.category_id}
+            />
+          </Suspense>
 
         </div>
       </main>

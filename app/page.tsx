@@ -1,3 +1,4 @@
+import { Suspense }         from 'react'
 import type { Metadata }   from 'next'
 import Link                from 'next/link'
 import { createClient }    from '@/lib/supabase/server'
@@ -6,6 +7,8 @@ import { LandSearchAutocomplete }    from '@/features/search/ui/land-search-auto
 import { JsonLd }          from '@/shared/seo/JsonLd'
 import { websiteSchema }   from '@/lib/seo/schema'
 import { getFeaturedListings as _getFeaturedListings } from '@/entities/listing/api/listing.server'
+import { HomepageTrending }  from '@/features/recommendation/components/HomepageTrending'
+import { HomepageDiscovery } from '@/features/recommendation/components/HomepageDiscovery'
 
 export const revalidate = 300
 
@@ -158,6 +161,16 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ── Đang được quan tâm — Trending compact cards ── */}
+      <Suspense fallback={null}>
+        <HomepageTrending />
+      </Suspense>
+
+      {/* ── Khám phá dành cho bạn — Personalized discovery ── */}
+      <Suspense fallback={null}>
+        <HomepageDiscovery />
+      </Suspense>
 
       {/* ── Đại lý xác thực ── */}
       {businesses.length > 0 && (

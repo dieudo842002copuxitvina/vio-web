@@ -7,6 +7,8 @@ import { listingToLandCard }  from '@/entities/listing'
 import { getPageState, getRobotsMeta } from '@/lib/seo/thin-page'
 import { getLandListingsByProvinceSEO } from '@/features/seo/api/seo-feeds.server'
 import { seoRowToListing }              from '@/features/seo/api/seo-utils'
+import { getTrendingListings }          from '@/features/recommendation/api/recommendation.server'
+import { TrackableCard }                from '@/features/recommendation/components/TrackableCard'
 import type { Province } from '@/lib/geo/types'
 
 export const revalidate = 3600
@@ -61,8 +63,6 @@ export async function generateMetadata(
 }
 
 // ── Page ────────────────────────────────────────────────────────────────────
-// Listings read from listings_featured_by_province MV via getLandListingsByProvinceSEO().
-// Falls back to search_listings_hybrid() if MV is unavailable (logged as [seo-feed-fallback]).
 
 export default async function LandProvincePage(
   { params }: { params: Promise<{ province: string }> },
@@ -75,7 +75,10 @@ export default async function LandProvincePage(
   const { province, redirectSlug } = result
   if (redirectSlug) redirect(`/dat-nong-nghiep/${redirectSlug}`, 301 as any)
 
-  const { items, total } = await getLandListingsByProvinceSEO(province.id, { type: 'land' })
+  const [{ items, total }, recommendations] = await Promise.all([
+    getLandListingsByProvinceSEO(province.id, { type: 'land' }),
+    getTrendingListings('province', province.id, 6),
+  ])
 
   const pageState = getPageState('province', total)
   if (pageState === 'not-found') notFound()
@@ -138,6 +141,27 @@ export default async function LandProvincePage(
             <span className="text-6xl opacity-20 mb-5 select-none" aria-hidden="true">🌾</span>
             <p className="text-gray-500 text-[0.9375rem]">Chưa có tin đăng đất nông nghiệp tại {province.name}.</p>
           </div>
+        )}
+
+        {/* ── Có thể bạn quan tâm — province-scoped trending ── */}
+        {recommendations.length > 0 && (
+          <section aria-label="Có thể bạn quan tâm" className="mt-12">
+            <div className="mb-5 flex items-center gap-3">
+              <h2 className="m-0 shrink-0 text-[1.0625rem] font-bold tracking-tight text-gray-900 dark:text-white">
+                Có thể bạn quan tâm
+              </h2>
+              <div className="h-px flex-1 bg-gray-200/70 dark:bg-white/[0.07]" />
+            </div>
+            <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 list-none m-0 p-0">
+              {recommendations.map(({ id, ...card }) => (
+                <li key={id}>
+                  <TrackableCard targetId={id} type="seo">
+                    <LandListingCard {...card} />
+                  </TrackableCard>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
       </main>

@@ -2,9 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLandListingsSEO }   from '@/features/seo/api/seo-feeds.server'
 import { seoRowToListing }      from '@/features/seo/api/seo-utils'
-import { listingToLandCard } from '@/entities/listing'
-import { ListingBrowser }    from './_components/listing-browser'
-import type { ListingEntry } from './_components/listing-browser'
+import { listingToLandCard }    from '@/entities/listing'
+import { getTrendingListings }  from '@/features/recommendation/api/recommendation.server'
+import { getTrendingSearches }  from '@/features/search/api/search.server'
+import { TrendingListingsSection } from '@/features/recommendation/components/TrendingListingsSection'
+import { TrendingSearches }        from '@/features/recommendation/components/TrendingSearches'
+import { ListingBrowser }       from './_components/listing-browser'
+import type { ListingEntry }    from './_components/listing-browser'
 
 export const revalidate = 3600
 
@@ -41,8 +45,6 @@ function parsePriceTy(text: string | null | undefined): number {
 }
 
 // ── Data fetching ──────────────────────────────────────────────────────────
-// Reads from listings_featured_by_province MV (pre-filtered, pre-sorted).
-// Falls back to search_listings_hybrid() if MV is unavailable.
 
 async function fetchListings(): Promise<ListingEntry[]> {
   const { items } = await getLandListingsSEO(24)
@@ -58,10 +60,39 @@ async function fetchListings(): Promise<ListingEntry[]> {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default async function LandIndexPage() {
-  const listings = await fetchListings()
+  const [listings, trendingListings, trendingQueries] = await Promise.all([
+    fetchListings(),
+    getTrendingListings('national', undefined, 12),
+    getTrendingSearches(),
+  ])
+
+  const trendingSchema = trendingListings.length > 0
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Đất đang được quan tâm',
+        itemListElement: trendingListings.map((l, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          item: {
+            '@type': 'RealEstateListing',
+            url: `/dat-nong-nghiep/chi-tiet/${l.slug}`,
+            name: l.title,
+          },
+        })),
+      }
+    : null
 
   return (
     <main className="max-w-5xl mx-auto px-4 md:px-8 pt-6 pb-20">
+
+      {/* JSON-LD — Trending ItemList */}
+      {trendingSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(trendingSchema) }}
+        />
+      )}
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-[0.8125rem] text-gray-400 mb-8">
@@ -87,7 +118,13 @@ export default async function LandIndexPage() {
         </p>
       </header>
 
-      {/* Filter pills + grid (Client Component) */}
+      {/* ── Trending Searches — chip tags from search_logs ── */}
+      <TrendingSearches queries={trendingQueries} />
+
+      {/* ── Trending Listings ── */}
+      <TrendingListingsSection listings={trendingListings} />
+
+      {/* ── Filter pills + grid (Client Component) ── */}
       <ListingBrowser listings={listings} />
 
     </main>
