@@ -1,5 +1,3 @@
-'use server'
-
 // ── Local Commerce Graph — discovery feeds ────────────────────────────────────
 //
 // All reads are against pre-aggregated tables populated by pg_cron every 30 min.

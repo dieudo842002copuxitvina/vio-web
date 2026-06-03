@@ -1,5 +1,3 @@
-'use server'
-
 // ── User & session affinity helpers ───────────────────────────────────────────
 //
 // Two distinct data sources:
@@ -23,8 +21,7 @@
 // UI hints (pre-filling location filters, personalising discovery feeds) and
 // are NOT forwarded to the search RPC.
 
-import { unstable_cache }  from 'next/cache'
-import { createClient }    from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,10 +58,11 @@ function normaliseScore(raw: number): number {
 
 // ── getUserAffinities ─────────────────────────────────────────────────────────
 // Reads pre-computed affinities for an authenticated user.
-// Cache: 5 min TTL (matches pg_cron refresh interval).
+// Not cached with unstable_cache — data is RLS-restricted to the session user
+// and cannot be fetched with a cookie-free client.
 
-const _getUserAffinities = unstable_cache(
-  async (profileId: string): Promise<AffinityRecord[]> => {
+export async function getUserAffinities(profileId: string): Promise<AffinityRecord[]> {
+  try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('user_affinities')
@@ -78,13 +76,9 @@ const _getUserAffinities = unstable_cache(
       return []
     }
     return (data ?? []) as AffinityRecord[]
-  },
-  ['personalization', 'affinities', 'user'],
-  { revalidate: 300, tags: ['affinities'] },
-)
-
-export function getUserAffinities(profileId: string): Promise<AffinityRecord[]> {
-  return _getUserAffinities(profileId)
+  } catch {
+    return []
+  }
 }
 
 // ── getSessionAffinities ──────────────────────────────────────────────────────

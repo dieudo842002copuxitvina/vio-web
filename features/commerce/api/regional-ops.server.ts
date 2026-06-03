@@ -1,5 +1,3 @@
-'use server'
-
 // ── Regional Operating System — discovery feeds ───────────────────────────────
 //
 // Discovery Feeds V3: reads against pre-aggregated tables populated every 30 min

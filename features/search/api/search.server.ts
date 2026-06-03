@@ -1,7 +1,5 @@
-'use server'
-
 import { unstable_cache }  from 'next/cache'
-import { createClient }    from '@/lib/supabase/server'
+import { createClient, createCachedClient } from '@/lib/supabase/server'
 import { normalizeVi, parseSearchIntent } from '@/entities/search/model/normalize'
 import type {
   SearchRankedHit,
@@ -189,7 +187,7 @@ interface SearchPage1Params {
 
 const _cachedSearchPage1 = unstable_cache(
   async (p: SearchPage1Params): Promise<SearchRankedHit[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase.rpc('search_listings_hybrid', {
       q:                   p.qNorm,
       p_type:              p.type,
@@ -322,7 +320,7 @@ export async function searchListings(
 
 const _getDiscoveryItems = unstable_cache(
   async (context: DiscoveryContext, provinceId?: number): Promise<DiscoveryItem[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
 
     if (context === 'trending' || context === 'popular') {
       // Try MV first — pre-filtered, no moderation conditions needed at query time.
@@ -402,7 +400,7 @@ export async function getDiscoveryItems(
 
 const _getTrendingSearches = unstable_cache(
   async (): Promise<string[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data } = await supabase
       .from('search_logs')
       .select('query')

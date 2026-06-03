@@ -1,7 +1,5 @@
-'use server'
-
 import { unstable_cache }    from 'next/cache'
-import { createClient }      from '@/lib/supabase/server'
+import { createCachedClient } from '@/lib/supabase/server'
 import type { Listing }      from '@/entities/listing'
 import { listingToLandCard } from '@/entities/listing'
 import type { LandListingCardProps } from '@/entities/listing'
@@ -39,7 +37,7 @@ const _getRelatedListings = unstable_cache(
     districtId:  number | null,
     limit:       number,
   ): Promise<LandListingCardProps[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const seen     = new Set([listingId])
     const results: Listing[] = []
 
@@ -156,7 +154,7 @@ const _getSameCategoryListings = unstable_cache(
     provinceId: number | null,
     limit:      number,
   ): Promise<LandListingCardProps[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
