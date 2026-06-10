@@ -1,9 +1,8 @@
-import { BaseListingCard } from './BaseListingCard'
-import { ListingPrice }    from './ListingPrice'
-import { ListingMeta }     from './ListingMeta'
+import { LandCard } from './LandCard'
 
-// Public API is unchanged — existing callers continue to work.
-// Internals now compose from BaseListingCard + atomic primitives.
+// ── LandListingCardProps ───────────────────────────────────────────────────────
+// Legacy props shape — kept so all callers (province page, recommendation engine,
+// etc.) compile without changes. Internally delegated to the Apple HIG LandCard.
 
 export interface LandListingCardProps {
   slug:             string
@@ -15,10 +14,16 @@ export interface LandListingCardProps {
   legal_status?:    string | null
   image_url?:       string | null
   is_featured?:     boolean
-  // New optional — omit to keep old behaviour
+  is_verified?:     boolean
   layout?:          'grid' | 'list' | 'compact'
   showFavorite?:    boolean
 }
+
+const VARIANT_MAP = {
+  grid:    'standard',
+  list:    'list',
+  compact: 'compact',
+} as const
 
 export function LandListingCard({
   slug,
@@ -30,35 +35,25 @@ export function LandListingCard({
   legal_status,
   image_url,
   is_featured,
+  is_verified,
   layout       = 'grid',
   showFavorite = false,
 }: LandListingCardProps) {
-  const typeBadge = legal_status ?? land_type_label
-
-  const metaItems = [
-    land_area_text ? { text: land_area_text } : null,
-    location       ? { text: location }       : null,
-  ].filter(Boolean) as Array<{ text: string }>
-
   return (
-    <BaseListingCard
-      href={`/dat-nong-nghiep/chi-tiet/${slug}`}
+    <LandCard
+      id={slug}
+      slug={slug}
+      title={title}
       imageUrl={image_url}
-      imageAlt={title}
-      placeholderEmoji="🌾"
-      badges={[
-        ...(typeBadge  ? [{ label: typeBadge,  variant: 'default' as const, position: 'left'  as const }] : []),
-        ...(is_featured ? [{ label: 'Nổi bật', variant: 'primary' as const, position: 'right' as const }] : []),
-      ]}
-      listingId={slug}
+      price={price_text}
+      area={land_area_text}
+      locationText={location}
+      landType={land_type_label}
+      legalStatus={legal_status}
+      isFeatured={is_featured}
+      isVerified={is_verified}
+      variant={VARIANT_MAP[layout]}
       showFavorite={showFavorite}
-      layout={layout}
-    >
-      <ListingPrice text={price_text} size="lg" />
-      {metaItems.length > 0 && <ListingMeta items={metaItems} />}
-      <p className="m-0 line-clamp-2 text-base font-medium leading-snug text-gray-800 dark:text-gray-200">
-        {title}
-      </p>
-    </BaseListingCard>
+    />
   )
 }

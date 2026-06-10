@@ -15,7 +15,11 @@ export { ListingMeta }     from './ui/ListingMeta'
 export type { MetaItem }   from './ui/ListingMeta'
 export { FavoriteButton }  from './ui/FavoriteButton'
 
-// Variant cards
+// Primary land card (all variants — Apple HIG)
+export { LandCard }               from './ui/LandCard'
+export type { LandCardProps, LandCardVariant } from './ui/LandCard'
+
+// Variant cards (legacy)
 export { LandListingCard }        from './ui/land-listing-card'
 export { ProductListingCard }     from './ui/ProductListingCard'
 export { ServiceListingCard }     from './ui/ServiceListingCard'
@@ -55,6 +59,7 @@ export { LISTING_TYPE_ROUTES, LISTING_TYPE_LABELS, LAND_TYPE_LABELS } from './mo
 
 // ── Adapters ──────────────────────────────────────────────────────────────────
 export {
+  toLandCard,
   listingToLandCard,
   listingToUniversal,
   storefrontToUniversal,

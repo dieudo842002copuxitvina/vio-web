@@ -1,5 +1,3 @@
-'use server'
-
 // ── Subscription query layer ───────────────────────────────────────────────────
 //
 // getSubscriptionFeatures(profileId)  — feature flags for the current plan
@@ -10,8 +8,8 @@
 // All reads use the authenticated anon client (RLS: users see their own row).
 // Cache: 5 min per profileId; invalidated by revalidateTag('billing').
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { unstable_cache }    from 'next/cache'
+import { createClient, createCachedClient } from '@/lib/supabase/server'
 import {
   FREE_PLAN_FEATURES,
   PRO_PLAN_FEATURES,
@@ -20,30 +18,19 @@ import type { PlanFeatures, Subscription } from '../types'
 
 // ── getSubscriptionFeatures ───────────────────────────────────────────────────
 
-const _cachedFeatures = unstable_cache(
-  async (profileId: string): Promise<PlanFeatures> => {
+export async function getSubscriptionFeatures(
+  profileId: string,
+): Promise<PlanFeatures> {
+  try {
     const supabase = await createClient()
-
     const { data } = await supabase
       .from('subscriptions')
       .select('plan_id, status')
       .eq('profile_id', profileId)
       .eq('status', 'active')
       .maybeSingle()
-
     if (!data) return FREE_PLAN_FEATURES
-
     return data.plan_id === 'pro' ? PRO_PLAN_FEATURES : FREE_PLAN_FEATURES
-  },
-  ['billing', 'subscription-features'],
-  { revalidate: 300, tags: ['billing'] },
-)
-
-export async function getSubscriptionFeatures(
-  profileId: string,
-): Promise<PlanFeatures> {
-  try {
-    return await _cachedFeatures(profileId)
   } catch (err) {
     console.error('[getSubscriptionFeatures]', (err as Error).message)
     return FREE_PLAN_FEATURES
@@ -103,7 +90,7 @@ export interface BillingMetrics {
 
 const _cachedBillingMetrics = unstable_cache(
   async (): Promise<BillingMetrics> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
 
     const [proRes, freeRes, featuredRes] = await Promise.all([
       supabase

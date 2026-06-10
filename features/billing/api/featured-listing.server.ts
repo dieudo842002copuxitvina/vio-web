@@ -1,5 +1,3 @@
-'use server'
-
 // ── Featured Listing query layer ──────────────────────────────────────────────
 //
 // getActiveFeaturedListings(limit)

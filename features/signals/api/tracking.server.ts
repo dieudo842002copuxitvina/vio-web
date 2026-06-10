@@ -139,3 +139,32 @@ export async function trackShare(
 ): Promise<void> {
   return insertEvent(listingId, 'share', options)
 }
+
+/**
+ * Track a Pro user clicking the Zalo contact button.
+ * Stored as 'inquiry' event with metadata.channel = 'zalo'.
+ * High-intent signal — same weight class as inquiry.
+ */
+export async function trackZaloClick(
+  listingId: string,
+  options?: TrackingOptions,
+): Promise<void> {
+  return insertEvent(listingId, 'inquiry', {
+    ...options,
+    metadata: { ...options?.metadata, channel: 'zalo' },
+  })
+}
+
+/**
+ * Track a Pro user clicking the email contact link.
+ * Stored as 'inquiry' event with metadata.channel = 'email'.
+ */
+export async function trackEmailClick(
+  listingId: string,
+  options?: TrackingOptions,
+): Promise<void> {
+  return insertEvent(listingId, 'inquiry', {
+    ...options,
+    metadata: { ...options?.metadata, channel: 'email' },
+  })
+}

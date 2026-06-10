@@ -12,6 +12,16 @@
   --color-vio-primary:      #34C759;
   --color-vio-primary-dark: #30D158;   /* dark-mode variant                  */
 
+  /* vio-forest — deep greens for headings, hero panels, dark CTAs            */
+  --color-vio-forest:       #1A4D2E;   /* replaces all hardcoded #1A4D2E     */
+  --color-vio-forest-mid:   #2D7A4F;   /* hover states, mid-forest           */
+  --color-vio-forest-deep:  #0D2E1A;   /* darkest — gradient from color      */
+
+  /* vio-blue / amber / teal — semantic action colors                         */
+  --color-vio-blue:         #0071E3;   /* confirm actions (= lagoon-deep)    */
+  --color-vio-amber:        #FF9500;   /* trending kickers (= iOS orange)    */
+  --color-vio-teal:         #32ADE6;   /* secondary accent (= lagoon)        */
+
   /* vio-earth — warm terracotta/brown for soil, rural warmth                 */
   --color-vio-earth:        #8B6654;
   --color-vio-earth-light:  #C4A882;
@@ -22,9 +32,25 @@
 
   /* ── Shadows ────────────────────────────────────────────────────────────── */
   /* apple-soft — whisper shadow for cards, avoids hard borders               */
-  --shadow-apple-soft: 0 4px 24px rgba(0, 0, 0, 0.04);
+  --shadow-apple-soft:  0 4px 24px rgba(0, 0, 0, 0.04);
   /* apple-card — slightly deeper for elevated modals/drawers                 */
-  --shadow-apple-card: 0 2px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-apple-card:  0 2px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  /* apple-hover — card lift state on hover                                   */
+  --shadow-apple-hover: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+
+  /* ── Section Spacing — enforces 80/96/120px vertical rhythm ────────────── */
+  --spacing-section-sm: 5rem;    /* 80px  — mobile  */
+  --spacing-section-md: 6rem;    /* 96px  — tablet  */
+  --spacing-section-lg: 7.5rem;  /* 120px — desktop */
+
+  /* ── Typography Scale ───────────────────────────────────────────────────── */
+  /* Display (Hero H1): 48–72px */
+  --text-display-sm: 3rem;      /* 48px mobile  */
+  --text-display-md: 3.75rem;   /* 60px tablet  */
+  --text-display-lg: 4.5rem;    /* 72px desktop */
+  /* Section headings: 32–40px */
+  --text-section-sm: 2rem;      /* 32px mobile  */
+  --text-section-lg: 2.5rem;    /* 40px desktop */
 
   /* ── Extended Border Radius ─────────────────────────────────────────────── */
   /* Tailwind v4 ships 2xl (1rem) and 3xl (1.5rem).
@@ -67,6 +93,14 @@
   --kicker:         #34C759;
   --hero-a:         rgba(50,173,230,0.10);
   --hero-b:         rgba(52,199,89,0.07);
+
+  /* Province card gradients — consumed via style={{ background: 'var(--pg-X)' }} */
+  --pg-dong-nai:    linear-gradient(135deg, #0D2E1A 0%, #2D7A4F 100%);
+  --pg-binh-phuoc:  linear-gradient(135deg, #1A3B1C 0%, #3A7A3D 100%);
+  --pg-tay-ninh:    linear-gradient(135deg, #3D2E0A 0%, #7A5F1A 100%);
+  --pg-lam-dong:    linear-gradient(135deg, #0A2040 0%, #1E5A88 100%);
+  --pg-gia-lai:     linear-gradient(135deg, #2E1A05 0%, #6B3E10 100%);
+  --pg-dak-lak:     linear-gradient(135deg, #062B20 0%, #0F5E46 100%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -117,10 +151,30 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Responsive section vertical padding — enforces 80/96/120px rhythm */
+@utility section-y {
+  padding-block: var(--spacing-section-sm);
+  @media (width >= 768px)  { padding-block: var(--spacing-section-md); }
+  @media (width >= 1024px) { padding-block: var(--spacing-section-lg); }
+}
+
+/* Unified kicker label — for section eyebrow text above headings */
+@utility section-kicker {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Base
    ───────────────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
 
 html { height: 100%; }
 
@@ -194,7 +248,7 @@ a:hover { color: #005BBB; }
   padding: 0.5625rem 1.25rem;
   border-radius: 0.75rem;
   border: none;
-  background-color: var(--lagoon-deep);
+  background-color: #34C759;   /* = vio-primary */
   color: #fff;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -204,8 +258,8 @@ a:hover { color: #005BBB; }
   min-height: 44px;
   transition: opacity 120ms, background-color 120ms;
 }
-.btn-primary:hover    { background-color: #005BBB; color: #fff; }
-.btn-primary:active   { opacity: 0.82; }
+.btn-primary:hover    { background-color: #2D7A4F; color: #fff; }  /* = vio-forest-mid */
+.btn-primary:active   { opacity: 0.82; transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.38; cursor: not-allowed; }
 
 .btn-secondary {

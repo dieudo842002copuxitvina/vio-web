@@ -4,9 +4,10 @@ import type { Listing }      from '@/entities/listing'
 import { listingToLandCard } from '@/entities/listing'
 import type { LandListingCardProps } from '@/entities/listing'
 
-// Shared column list (mirrors listing.server.ts COLS — no search_vector)
+// Shared column list (mirrors listing.server.ts COLS — no search_vector).
+// listing_type is the actual DB column; aliased to type for TS compatibility.
 const COLS = [
-  'id', 'type', 'slug', 'title', 'short_description', 'description',
+  'id', 'listing_type:type', 'slug', 'title', 'short_description', 'description',
   'cover_url', 'province_id', 'district_id', 'location_text',
   'price_amount', 'price_unit', 'price_text', 'price_type',
   'status', 'moderation_status', 'is_public', 'is_featured', 'is_verified',
@@ -83,7 +84,7 @@ const _getRelatedListings = unstable_cache(
       const { data } = await supabase
         .from('listings')
         .select(COLS)
-        .eq('type', listingType)
+        .eq('listing_type', listingType)
         .eq('is_public', true)
         .eq('moderation_status', 'approved')
         .eq('status', 'published')
@@ -109,7 +110,7 @@ const _getRelatedListings = unstable_cache(
       const { data } = await supabase
         .from('listings')
         .select(COLS)
-        .eq('type', listingType)
+        .eq('listing_type', listingType)
         .eq('is_public', true)
         .eq('moderation_status', 'approved')
         .eq('status', 'published')

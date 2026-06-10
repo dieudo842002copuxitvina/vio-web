@@ -1,102 +1,105 @@
-import Link           from 'next/link'
-import { BottomTabBar } from './_components/bottom-tab-bar'
+import { Suspense }        from 'react'
+import type { ReactNode }  from 'react'
 
-// ── Public Layout ─────────────────────────────────────────────────────────────
-// Wraps all public SEO pages: landing, listing index, listing detail, etc.
-// Desktop: sticky TopNav at top
-// Mobile:  fixed BottomTabBar at bottom
+import { ShellProvider }   from './_components/ShellProvider'
+import { TopNav }          from './_components/TopNav'
+import { MobileHeader }    from './_components/MobileHeader'
+import { SearchModal }     from './_components/SearchModal'
+import { BottomTabBar }    from './_components/bottom-tab-bar'
+import { Footer }          from '../_components/Footer'
+import {
+  UserMenuServer,
+  UserMenuSkeleton,
+}                          from './_components/UserMenuServer'
 
-export default function PublicLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+// ── Public layout ─────────────────────────────────────────────────────────────
+// Wraps all public-facing routes: /dat-nong-nghiep, /tinh, /ban-do,
+// /doanh-nghiep, /membership, /dang-nhap, etc.
+//
+// Shell components:
+//   TopNav       — desktop sticky header, 64px
+//   MobileHeader — mobile sticky header, 56px
+//   MobileDrawer — rendered inside MobileHeader, slide-in from right
+//   SearchModal  — full-screen search overlay, opened via ShellProvider context
+//   BottomTabBar — mobile quick-nav, 49px + safe area
+//   Footer       — full-width footer
+//
+// authSlot is a Suspense-wrapped server component tree that resolves to either
+// a "Đăng nhập" link or a user avatar dropdown. It is constructed once here and
+// passed as a ReactNode prop to both nav bars (RSC composition pattern).
+
+export default function PublicLayout({ children }: { children: ReactNode }) {
+  const authSlot = (
+    <Suspense fallback={<UserMenuSkeleton />}>
+      <UserMenuServer />
+    </Suspense>
+  )
+
   return (
-    <>
-      {/* ── TopNav (desktop only) ─────────────────────────────────────────── */}
-      <header
-        className={[
-          // Visibility
-          'hidden md:flex',
-          // Positioning
-          'fixed top-0 inset-x-0 z-40',
-          // Height
-          'h-16',
-          // Surface — glassmorphism
-          'bg-white/80 backdrop-blur-md',
-          // Bottom border hairline
-          'border-b border-gray-100/60',
-          // Layout
-          'items-center',
-        ].join(' ')}
+    <ShellProvider>
+
+      {/* ── Accessibility: skip-to-content ────────────────────────────── */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4
+                   focus:z-[9999] focus:rounded-xl focus:bg-vio-primary focus:px-4
+                   focus:py-2 focus:text-sm focus:font-bold focus:text-white
+                   focus:no-underline focus:shadow-lg"
       >
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-6">
+        Chuyển đến nội dung chính
+      </a>
 
-          {/* Logo */}
-          <Link
-            href="/"
-            className="shrink-0 text-lg font-bold tracking-tight text-gray-900 no-underline"
-          >
-            VIO LOCAL
-          </Link>
+      {/* ── Desktop navigation: 64px ──────────────────────────────────── */}
+      <TopNav authSlot={authSlot} />
 
-          {/* Search bar placeholder */}
-          <div className="flex flex-1 items-center">
-            <div
-              className={[
-                'flex h-9 w-full max-w-md items-center gap-2',
-                'rounded-xl bg-gray-100 px-3',
-                'text-sm text-gray-400',
-              ].join(' ')}
-            >
-              <svg
-                width="16" height="16" viewBox="0 0 24 24"
-                fill="none" aria-hidden="true"
-                className="shrink-0 text-gray-400"
-              >
-                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
-                <path
-                  d="M16.5 16.5 21 21"
-                  stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"
-                />
-              </svg>
-              Tìm kiếm đất, khu vực...
-            </div>
-          </div>
+      {/* ── Mobile navigation: 56px top bar + slide-in drawer ─────────── */}
+      <MobileHeader authSlot={authSlot} />
 
-          {/* Right actions */}
-          <nav className="flex shrink-0 items-center gap-1">
-            <Link
-              href="/dat-nong-nghiep"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 no-underline transition-colors hover:bg-gray-100 hover:text-gray-900"
-            >
-              Khám phá
-            </Link>
-            <Link
-              href="/dang-tin"
-              className={[
-                'rounded-xl px-4 py-2',
-                'bg-vio-primary text-white',
-                'text-sm font-semibold no-underline',
-                'transition-opacity hover:opacity-90',
-              ].join(' ')}
-            >
-              Đăng tin
-            </Link>
-          </nav>
+      {/* ── Global search overlay (portal-style, triggered by context) ── */}
+      <SearchModal />
 
-        </div>
-      </header>
-
-      {/* ── Page content ──────────────────────────────────────────────────── */}
-      {/* pt-16/20: clears TopNav on desktop  */}
-      {/* pb-20:     clears BottomTabBar on mobile */}
-      <main className="min-h-screen pt-0 pb-20 md:pt-16 md:pb-0">
+      {/* ── Page content ──────────────────────────────────────────────── */}
+      {/* pt-14: clears 56px MobileHeader on mobile                       */}
+      {/* md:pt-16: clears 64px TopNav on desktop                         */}
+      {/* pb-[calc(3.5rem+env(safe-area-inset-bottom))]: clears BottomTabBar */}
+      {/* md:pb-0: no bottom clearance needed on desktop                  */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="min-h-screen bg-[#FBFBFD]
+                   pt-14 pb-[calc(3.5rem+env(safe-area-inset-bottom))]
+                   md:pt-16 md:pb-0
+                   focus-visible:outline-none"
+      >
         {children}
       </main>
 
-      {/* ── BottomTabBar (mobile only) ────────────────────────────────────── */}
+      {/* ── Footer ────────────────────────────────────────────────────── */}
+      {/* pb-[3.5rem]: prevent footer from being hidden behind BottomTabBar */}
+      <div className="pb-[3.5rem] md:pb-0">
+        <Footer />
+      </div>
+
+      {/* ── Floating "Đăng tin" button — mobile only ─────────────────── */}
+      {/* Positioned above the BottomTabBar, hidden on desktop           */}
+      <div
+        className="pointer-events-none fixed inset-x-0 z-30 flex justify-center md:hidden"
+        style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom) + 12px)' }}
+      >
+        <a
+          href="/dang-tin-dat"
+          className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#1A4D2E] px-5 py-3 text-[14px] font-bold text-white shadow-[0_4px_20px_rgba(26,77,46,0.35)] no-underline active:scale-[0.97] transition-transform"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>
+          Đăng tin
+        </a>
+      </div>
+
+      {/* ── Mobile bottom tab bar ─────────────────────────────────────── */}
       <BottomTabBar />
-    </>
+
+    </ShellProvider>
   )
 }

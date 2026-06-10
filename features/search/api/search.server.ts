@@ -338,7 +338,7 @@ const _getDiscoveryItems = unstable_cache(
         ? await supabase
             .from('listings')
             .select('id, slug, title, price_text, cover_url, province_id')
-            .eq('type', 'land')
+            .eq('listing_type', 'land')
             .eq('is_public', true)
             .eq('moderation_status', 'approved')
             .eq('status', 'published')
@@ -397,20 +397,47 @@ export async function getDiscoveryItems(
 }
 
 // ── Trending searches ─────────────────────────────────────────────────────────
+// Priority:
+//   1. search_logs within last 7 days, ordered by count
+//   2. any search_logs ever (cold start: no recent searches)
+//   3. recent listing titles (very cold start: no searches at all)
 
 const _getTrendingSearches = unstable_cache(
   async (): Promise<string[]> => {
     const supabase = createCachedClient()
-    const { data } = await supabase
+
+    // Pass 1: last 7 days
+    const { data: recent } = await supabase
       .from('search_logs')
       .select('query')
       .gte('last_searched_at', new Date(Date.now() - 7 * 86_400_000).toISOString())
       .order('count', { ascending: false })
       .limit(8)
-    return (data ?? []).map(r => (r as { query: string }).query)
+
+    if (recent?.length) return recent.map(r => (r as { query: string }).query)
+
+    // Pass 2: all-time search_logs (new deployment, no recent searches yet)
+    const { data: allTime } = await supabase
+      .from('search_logs')
+      .select('query')
+      .order('count', { ascending: false })
+      .limit(8)
+
+    if (allTime?.length) return allTime.map(r => (r as { query: string }).query)
+
+    // Pass 3: derive from recent listing titles (search_logs completely empty)
+    const { data: listings } = await supabase
+      .from('listings')
+      .select('title')
+      .eq('is_public', true)
+      .eq('moderation_status', 'approved')
+      .order('published_at', { ascending: false })
+      .limit(8)
+
+    return (listings ?? []).map(r => (r as { title: string }).title).filter(Boolean)
   },
   ['search', 'trending'],
-  { revalidate: 3600, tags: ['search'] },
+  { revalidate: 3600, tags: ['search', 'listings'] },
 )
 
 export async function getTrendingSearches(): Promise<string[]> {

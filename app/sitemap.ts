@@ -46,9 +46,16 @@ function buildStaticEntries(): SitemapEntry[] {
       priority:        0.9,
     },
     {
-      url:             u('/doanh-nghiep'),
+      url:             u('/tim-kiem'),
+      lastModified:    new Date(),
       changeFrequency: 'daily',
       priority:        0.8,
+    },
+    {
+      url:             u('/ban-do'),
+      lastModified:    new Date(),
+      changeFrequency: 'daily',
+      priority:        0.7,
     },
   ]
 }
@@ -65,14 +72,14 @@ function buildLandProvinceEntries(provinces: ProvinceRow[]): SitemapEntry[] {
 function buildListingEntries(
   listings: { slug: string; updated_at: string; is_featured: boolean }[],
 ): SitemapEntry[] {
-  // Route: app/dat-nong-nghiep/chi-tiet/[slug]/page.tsx
+  // Route: app/dat/[slug]/page.tsx — canonical listing detail URL.
+  // app/dat-nong-nghiep/chi-tiet/[slug] 308-redirects here.
   //
   // Source: listings_featured_by_province MV (pre-filtered public/approved/published).
   // Scaling note: Google enforces a 50,000 URL/sitemap limit.
-  // At 100k+ listings, split this into app/dat-nong-nghiep/sitemap.ts
-  // using generateSitemaps() with index-based batching.
+  // At 100k+ listings, split into app/dat/sitemap.ts using generateSitemaps().
   return listings.map(l => ({
-    url:             u(`/dat-nong-nghiep/chi-tiet/${l.slug}`),
+    url:             u(`/dat/${l.slug}`),
     lastModified:    l.updated_at,
     changeFrequency: 'weekly' as const,
     priority:        l.is_featured ? 0.9 : 0.7,

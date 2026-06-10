@@ -4,6 +4,7 @@ import Link            from 'next/link'
 import { createClient }          from '@/lib/supabase/server'
 import { getStorefrontDetail }   from '@/features/storefronts/services/storefront-detail'
 import { SchemaMarkup }          from '@/shared/seo/SchemaMarkup'
+import { StoreStats }            from '@/features/storefronts/components/StoreStats'
 import { StorefrontTabs }        from './_components/StorefrontTabs'
 
 export const revalidate = 3600
@@ -67,6 +68,7 @@ export default async function BusinessProfilePage({
 
   const {
     storefront: sf,
+    trust,
     province, district, ward,
     products, services, nearby,
     reviews, review_count, average_rating,
@@ -241,6 +243,17 @@ export default async function BusinessProfilePage({
                 Facebook
               </a>
             )}
+          </div>
+        )}
+
+        {/* ── Trust Block ── */}
+        {trust && (
+          <div className="mb-6">
+            <StoreStats
+              trust_score={trust.trust_score}
+              active_listings_count={trust.active_listings}
+              response_rate={trust.response_rate}
+            />
           </div>
         )}
 

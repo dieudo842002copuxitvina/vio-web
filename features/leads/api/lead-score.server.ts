@@ -1,5 +1,3 @@
-'use server'
-
 // ── Lead Intelligence scoring engine ─────────────────────────────────────────
 //
 // All scoring is done in the query layer — no SQL views or migrations needed.
@@ -15,8 +13,7 @@
 // getLeadTimeline(merchantId, profileId):
 //   Same listing fetch + filtered events for one profile (2 queries, no cache).
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import type {
   BehavioralLead,
   LeadTemperature,
@@ -46,8 +43,7 @@ function scoreToTemperature(score: number): LeadTemperature {
 // Top 100 behavioral leads for the authenticated merchant.
 // Cache: 5 min per merchantId.
 
-const _cachedLeadScores = unstable_cache(
-  async (merchantId: string): Promise<BehavioralLead[]> => {
+async function _computeLeadScores(merchantId: string): Promise<BehavioralLead[]> {
     const supabase = await createClient()
 
     // 1. Merchant's published listings
@@ -151,14 +147,11 @@ const _cachedLeadScores = unstable_cache(
         listingSlug:    listing?.slug       ?? null,
       }
     })
-  },
-  ['leads', 'behavioral'],
-  { revalidate: 300, tags: ['leads', 'listings'] },
-)
+}
 
 export async function getLeadScores(merchantId: string): Promise<BehavioralLead[]> {
   try {
-    return await _cachedLeadScores(merchantId)
+    return await _computeLeadScores(merchantId)
   } catch (err) {
     console.error('[getLeadScores]', (err as Error).message)
     return []

@@ -1,5 +1,3 @@
-'use server'
-
 import { unstable_cache }  from 'next/cache'
 import { createCachedClient } from '@/lib/supabase/server'
 
@@ -28,7 +26,14 @@ export interface SEOFeedRow {
 const MV_COLS = [
   'id', 'type', 'slug', 'title', 'short_description', 'cover_url',
   'price_text', 'price_amount', 'province_id', 'district_id', 'category_id',
-  'location_text', 'is_featured', 'is_verified', 'updated_at', 'rn',
+  'is_featured', 'is_verified', 'updated_at', 'rn',
+].join(', ')
+
+// Fallback column list for direct listings table queries (no rn, type aliased)
+const LISTING_FALLBACK_COLS = [
+  'id', 'listing_type:type', 'slug', 'title', 'short_description', 'cover_url',
+  'price_text', 'price_amount', 'province_id', 'district_id', 'category_id',
+  'is_featured', 'is_verified', 'updated_at',
 ].join(', ')
 
 
@@ -68,8 +73,8 @@ export async function getLandListingsSEO(
     const supabase = createCachedClient()
     const { data } = await supabase
       .from('listings')
-      .select(MV_COLS)
-      .eq('type', 'land')
+      .select(LISTING_FALLBACK_COLS)
+      .eq('listing_type', 'land')
       .eq('is_public', true)
       .eq('moderation_status', 'approved')
       .order('is_featured', { ascending: false })
@@ -121,8 +126,8 @@ export async function getLandListingsByProvinceSEO(
     const supabase = createCachedClient()
     const { data, count } = await supabase
       .from('listings')
-      .select(MV_COLS, { count: 'exact' })
-      .eq('type', type)
+      .select(LISTING_FALLBACK_COLS, { count: 'exact' })
+      .eq('listing_type', type)
       .eq('province_id', provinceId)
       .eq('is_public', true)
       .eq('moderation_status', 'approved')
@@ -172,7 +177,7 @@ export async function getLandSitemapFeedSEO(limit = 1_000): Promise<SitemapRow[]
     const { data } = await supabase
       .from('listings')
       .select('slug, updated_at, is_featured')
-      .eq('type', 'land')
+      .eq('listing_type', 'land')
       .eq('is_public', true)
       .eq('moderation_status', 'approved')
       .order('updated_at', { ascending: false })

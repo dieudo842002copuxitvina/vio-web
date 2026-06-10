@@ -1,5 +1,3 @@
-'use server'
-
 // ── Smart Matching Engine ─────────────────────────────────────────────────────
 //
 // Triggered when a buyer has intent_level = 'high'.
@@ -36,8 +34,7 @@
 //   Cache key includes the intent dimensions so stale intents produce fresh results.
 //   TTL: 5 min.  Tags: listings, recommendations, personalization.
 
-import { unstable_cache }  from 'next/cache'
-import { createClient }    from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { detectBuyerIntent } from '@/features/personalization/api/buyer-intent.server'
 import type { MatchedListing } from '../types'
 
@@ -76,13 +73,12 @@ function buildReason(
 
 // ── Core matching (cached per profileId + intent dimensions) ─────────────────
 
-const _cachedSmartMatches = unstable_cache(
-  async (
-    profileId:        string,
-    favoriteCategory: number | null,
-    favoriteProvince: number | null,
-    limit:            number,
-  ): Promise<MatchedListing[]> => {
+async function _computeSmartMatches(
+  profileId:        string,
+  favoriteCategory: number | null,
+  favoriteProvince: number | null,
+  limit:            number,
+): Promise<MatchedListing[]> {
     const supabase = await createClient()
     const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
@@ -281,18 +277,8 @@ const _cachedSmartMatches = unstable_cache(
     return results
       .sort((a, b) => b.confidenceScore - a.confidenceScore)
       .slice(0, limit)
-  },
-  ['rec', 'smart-match'],
-  { revalidate: 300, tags: ['listings', 'recommendations', 'personalization'] },
-)
+}
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-/**
- * Returns up to `limit` listings ranked by match quality for a high-intent buyer.
- * Returns [] immediately when intent_level is not 'high' or when
- * both favorite_category and favorite_province are null.
- */
 export async function getSmartMatches(
   profileId: string,
   limit = 10,
@@ -302,7 +288,7 @@ export async function getSmartMatches(
     if (!intent || intent.intentLevel !== 'high')                          return []
     if (intent.favoriteCategory == null && intent.favoriteProvince == null) return []
 
-    return await _cachedSmartMatches(
+    return await _computeSmartMatches(
       profileId,
       intent.favoriteCategory,
       intent.favoriteProvince,

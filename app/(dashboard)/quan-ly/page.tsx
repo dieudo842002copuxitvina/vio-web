@@ -1,92 +1,224 @@
-import type { Metadata }       from 'next'
+import type { Metadata }         from 'next'
 import Link                       from 'next/link'
-import {
-  getMerchantMetrics,
-  getNotifications,
-  getListingPerformances,
-} from '@/features/merchant/api/merchant.server'
-import type {
-  MerchantMetrics,
-  ListingPerformance,
-} from '@/features/merchant/api/merchant.server'
+import Image                      from 'next/image'
 import { createClient }           from '@/lib/supabase/server'
+import { getActiveSubscription }  from '@/features/billing/api/subscription.server'
 
-export const metadata: Metadata = { title: 'Tổng quan' }
+export const metadata: Metadata = { title: 'Tổng quan — VIO AGRI' }
 export const revalidate = 0
 
-// ── Tier config ───────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const TIER_LABEL: Record<string, string> = {
-  top:     'Top',
-  good:    'Tốt',
-  average: 'Trung bình',
-  low:     'Yếu',
-  new:     'Mới',
+interface SavedSearch {
+  id:        string
+  label:     string
+  query_url: string
 }
 
-const TIER_COLOR: Record<string, string> = {
-  top:     'text-emerald-600 dark:text-emerald-400',
-  good:    'text-blue-600   dark:text-blue-400',
-  average: 'text-amber-600  dark:text-amber-400',
-  low:     'text-red-600    dark:text-red-400',
-  new:     'text-gray-400',
+interface SavedListing {
+  listing_id: string
+  listings: {
+    slug:          string
+    title:         string
+    cover_url:     string | null
+    location_text: string | null
+    price_text:    string | null
+  } | null
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Land type quick filters ────────────────────────────────────────────────────
 
-function fmtPct(v: number) { return `${(v * 100).toFixed(1)}%` }
-function fmtNum(v: number) { return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v) }
+const QUICK_FILTERS = [
+  { label: 'Đất lúa',       href: '/dat-nong-nghiep?land_type=lua'        },
+  { label: 'Cây ăn trái',   href: '/dat-nong-nghiep?land_type=an_trai'    },
+  { label: 'Cây lâu năm',   href: '/dat-nong-nghiep?land_type=cay_lau_nam'},
+  { label: 'Lâm nghiệp',    href: '/dat-nong-nghiep?land_type=lam_nghiep' },
+  { label: 'Trang trại',    href: '/dat-nong-nghiep?land_type=hon_hop'    },
+]
 
-function TrustRing({ score }: { score: number }) {
-  const r        = 28
-  const circ     = 2 * Math.PI * r
-  const dash     = circ * Math.min(score / 100, 1)
-  const color    = score >= 75 ? '#34C759'
-                 : score >= 50 ? '#FF9500'
-                 : '#FF3B30'
+// ── Search hero ───────────────────────────────────────────────────────────────
+// Plain HTML form — works without JS, navigates to /dat-nong-nghiep?q=...
+
+function SearchHero() {
   return (
-    <svg width="80" height="80" viewBox="0 0 80 80" className="rotate-[-90deg]">
-      <circle cx="40" cy="40" r={r} fill="none" stroke="currentColor"
-        className="text-gray-100 dark:text-white/[0.06]" strokeWidth="8" />
-      <circle cx="40" cy="40" r={r} fill="none" stroke={color} strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${circ}`}
-        style={{ transition: 'stroke-dasharray 0.4s ease' }} />
-      <text x="40" y="40" textAnchor="middle" dominantBaseline="central"
-        className="fill-gray-900 dark:fill-white"
-        style={{ fontSize: 18, fontWeight: 700, transform: 'rotate(90deg)', transformOrigin: '40px 40px' }}>
-        {score}
-      </text>
-    </svg>
+    <section
+      className={[
+        'overflow-hidden rounded-3xl',
+        'bg-gradient-to-br from-vio-forest to-[#1A4A2A]',
+        'px-6 py-8 sm:px-10 sm:py-10',
+      ].join(' ')}
+      aria-label="Tìm đất nông nghiệp"
+    >
+      <h2 className="m-0 mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+        Khám phá
+      </h2>
+      <p className="m-0 mb-6 text-[1.5rem] font-bold leading-tight tracking-tight text-white sm:text-[1.75rem]">
+        Tìm đất nông nghiệp<br className="hidden sm:block" /> phù hợp với bạn
+      </p>
+
+      {/* Search form */}
+      <form action="/dat-nong-nghiep" method="get" role="search">
+        <div className="flex overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
+          <label htmlFor="dashboard-search" className="sr-only">Tìm kiếm đất</label>
+          <input
+            id="dashboard-search"
+            name="q"
+            type="search"
+            autoComplete="off"
+            placeholder="Tìm theo tỉnh, loại đất, diện tích..."
+            className={[
+              'flex-1 bg-transparent px-5 py-3.5',
+              'text-[15px] text-gray-900 placeholder:text-gray-400',
+              'outline-none',
+            ].join(' ')}
+          />
+          <button
+            type="submit"
+            className={[
+              'shrink-0 bg-vio-forest px-5',
+              'text-[14px] font-bold text-white',
+              'transition-opacity hover:opacity-90',
+            ].join(' ')}
+          >
+            Tìm ngay
+          </button>
+        </div>
+      </form>
+
+      {/* Quick filters */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {QUICK_FILTERS.map(f => (
+          <Link
+            key={f.href}
+            href={f.href}
+            className={[
+              'rounded-full border border-white/20 bg-white/10 px-3 py-1.5',
+              'text-[12px] font-semibold text-white/85 no-underline',
+              'transition-colors hover:bg-white/20',
+            ].join(' ')}
+          >
+            {f.label}
+          </Link>
+        ))}
+        <Link
+          href="/dat-nong-nghiep"
+          className={[
+            'rounded-full border border-white/20 bg-white/10 px-3 py-1.5',
+            'text-[12px] font-semibold text-white/85 no-underline',
+            'transition-colors hover:bg-white/20',
+          ].join(' ')}
+        >
+          Xem tất cả →
+        </Link>
+      </div>
+    </section>
   )
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+// ── Saved search pill ─────────────────────────────────────────────────────────
 
-function StatCard({
-  label, value, sub, accent = false,
-}: {
-  label: string
-  value: string | number
-  sub?:  string
-  accent?: boolean
-}) {
+function SavedSearchPill({ s }: { s: SavedSearch }) {
   return (
-    <div className={[
-      'flex flex-col gap-1 rounded-2xl border p-5',
-      accent
-        ? 'border-[#0071E3]/20 bg-[#0071E3]/5 dark:border-[#409CFF]/20 dark:bg-[#409CFF]/10'
-        : 'border-gray-100 bg-white shadow-[0_1px_4px_rgb(0,0,0,0.05)] dark:border-white/[0.06] dark:bg-[#1C1C1E]',
-    ].join(' ')}>
-      <p className="m-0 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
-        {label}
-      </p>
-      <p className="m-0 text-2xl font-bold text-gray-900 dark:text-white">
-        {value}
-      </p>
-      {sub && (
-        <p className="m-0 text-xs text-gray-400">{sub}</p>
-      )}
+    <Link
+      href={s.query_url}
+      className={[
+        'flex items-center gap-2 rounded-full',
+        'border border-gray-200 bg-white px-4 py-2.5',
+        'shadow-[0_1px_3px_rgb(0,0,0,0.04)]',
+        'text-[13px] font-medium text-gray-700 no-underline',
+        'transition-all hover:border-vio-forest/30 hover:text-vio-forest',
+        'whitespace-nowrap',
+      ].join(' ')}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0 text-gray-400">
+        <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="2"/>
+        <path d="M15.5 15.5 21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      </svg>
+      {s.label}
+    </Link>
+  )
+}
+
+// ── Saved listing card ────────────────────────────────────────────────────────
+
+function SavedListingCard({ l }: { l: NonNullable<SavedListing['listings']>; listingId: string }) {
+  return (
+    <Link
+      href={`/dat-nong-nghiep/chi-tiet/${l.slug}`}
+      className={[
+        'group block overflow-hidden rounded-2xl border border-gray-100 bg-white',
+        'shadow-[0_1px_4px_rgb(0,0,0,0.04)] no-underline',
+        'transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgb(0,0,0,0.08)]',
+      ].join(' ')}
+    >
+      {/* Image */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+        {l.cover_url ? (
+          <Image
+            src={l.cover_url}
+            alt={l.title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            sizes="(max-width: 640px) 50vw, 200px"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-gray-200">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M12 22V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M12 13C11 11 8.5 9.5 6 10c.5-3.5 3-5 6-5s5.5 1.5 6 5c-2.5-.5-5 1-6 3z"
+                    stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
+      </div>
+      {/* Body */}
+      <div className="p-3">
+        {l.price_text && (
+          <p className="m-0 text-[14px] font-bold text-vio-forest">{l.price_text}</p>
+        )}
+        <p className="m-0 mt-0.5 line-clamp-1 text-[12px] text-gray-700">{l.title}</p>
+        {l.location_text && (
+          <p className="m-0 mt-1 flex items-center gap-1 text-[11px] text-gray-400">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            </svg>
+            {l.location_text}
+          </p>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+// ── Pro upgrade strip ─────────────────────────────────────────────────────────
+
+function ProUpgradeStrip() {
+  return (
+    <div
+      className={[
+        'flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5',
+        'shadow-[0_1px_4px_rgb(0,0,0,0.04)]',
+        'sm:flex-row sm:items-center',
+      ].join(' ')}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="m-0 text-[15px] font-bold text-gray-900">
+          Tìm đất hiệu quả hơn với Pro
+        </p>
+        <p className="m-0 mt-0.5 text-[13px] text-gray-400">
+          Smart Matching, 100 tin đăng, phân tích 30 ngày.
+        </p>
+      </div>
+      <Link
+        href="/goi-thanh-vien"
+        className={[
+          'shrink-0 rounded-full bg-gray-900 px-5 py-2.5',
+          'text-[13px] font-bold text-white no-underline',
+          'transition-opacity hover:opacity-80',
+        ].join(' ')}
+      >
+        Xem gói Pro
+      </Link>
     </div>
   )
 }
@@ -96,211 +228,172 @@ function StatCard({
 export default async function QuanLyPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
-  if (!user) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center p-10 text-center text-gray-500">
-        Vui lòng đăng nhập để xem tổng quan.
-      </div>
-    )
-  }
-
-  const [metrics, { notifications, unreadCount }, { items: listings }] = await Promise.all([
-    getMerchantMetrics(user.id),
-    getNotifications(user.id, { limit: 5 }),
-    getListingPerformances(user.id, 5),
+  const [subscription, listingRes] = await Promise.all([
+    getActiveSubscription(user.id),
+    supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user.id)
+      .eq('status', 'published'),
   ])
 
-  const m = metrics
+  const isPro          = subscription?.plan_id === 'pro' && subscription?.status === 'active'
+  const displayName    = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Bạn'
+  const activeCount    = listingRes.count ?? 0
+
+  // Saved searches (graceful empty)
+  let savedSearches: SavedSearch[] = []
+  try {
+    const res = await supabase
+      .from('saved_searches')
+      .select('id, label, query_url')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(6)
+    savedSearches = (res.data ?? []) as SavedSearch[]
+  } catch { savedSearches = [] }
+
+  // Saved listings (graceful empty)
+  let savedListings: SavedListing[] = []
+  try {
+    const res = await supabase
+      .from('listing_saves')
+      .select(`listing_id, listings ( slug, title, cover_url, location_text, price_text )`)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(4)
+    savedListings = ((res.data ?? []) as unknown as SavedListing[]).filter(r => r.listings !== null)
+  } catch { savedListings = [] }
 
   return (
-    <main className="p-6 md:p-10">
+    <div className="space-y-7 px-5 py-7 sm:px-8 sm:py-9">
 
-      {/* ── Header ── */}
-      <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
+      {/* ── Greeting ─────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="m-0 mb-1 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
             Dashboard
           </p>
-          <h1 className="m-0 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Tổng quan
+          <h1 className="m-0 mt-0.5 text-[1.5rem] font-bold tracking-tight text-gray-900 sm:text-[1.75rem]">
+            Xin chào, {displayName}
           </h1>
         </div>
-        {unreadCount > 0 && (
+        {isPro ? (
+          <span className="shrink-0 rounded-full border border-vio-forest/20 bg-[#F0F7F1] px-3 py-1 text-[11px] font-bold text-vio-forest">
+            Pro
+          </span>
+        ) : (
           <Link
-            href="/quan-ly-thong-bao"
-            className="flex items-center gap-2 rounded-full bg-[#0071E3] px-4 py-1.5 text-sm font-semibold text-white no-underline shadow-sm hover:bg-[#0077ED]"
+            href="/goi-thanh-vien"
+            className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-semibold text-gray-500 no-underline shadow-[0_1px_2px_rgb(0,0,0,0.04)] hover:border-gray-300 hover:text-gray-700"
           >
-            <span>{unreadCount} thông báo mới</span>
+            Free
           </Link>
         )}
       </div>
 
-      {/* ── Trust + overview ── */}
-      {m ? (
-        <div className="mb-6 flex flex-col gap-6 lg:flex-row lg:items-stretch">
+      {/* ── 1. Find land — search hero ────────────────────────────── */}
+      <SearchHero />
 
-          {/* Trust score ring */}
-          <div className="flex shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_1px_4px_rgb(0,0,0,0.05)] dark:border-white/[0.06] dark:bg-[#1C1C1E] lg:w-44">
-            <TrustRing score={Math.round(m.trust_score)} />
-            <p className="m-0 text-center text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
-              Điểm tin cậy
-            </p>
-          </div>
-
-          {/* KPI grid */}
-          <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard
-              label="Tin đang đăng"
-              value={m.active_listings}
-              sub={`/ ${m.total_listings} tổng`}
-              accent
-            />
-            <StatCard
-              label="Lượt xem 7 ngày"
-              value={fmtNum(m.impressions_7d)}
-              sub={`CTR ${fmtPct(m.ctr_7d)}`}
-            />
-            <StatCard
-              label="Yêu cầu 7 ngày"
-              value={m.inquiries_7d}
-              sub={`Tỷ lệ ${fmtPct(m.inquiry_rate_7d)}`}
-            />
-            <StatCard
-              label="Leads đang xử lý"
-              value={m.leads_active}
-              sub={`${m.leads_won_30d} chốt / 30 ngày`}
-            />
-            <StatCard
-              label="Tỷ lệ phản hồi"
-              value={fmtPct(m.response_rate_7d)}
-              sub={m.avg_response_hours > 0 ? `Tb ${m.avg_response_hours.toFixed(1)}h` : undefined}
-            />
-            <StatCard
-              label="Tỷ lệ chuyển đổi"
-              value={fmtPct(m.conversion_rate)}
-              sub="leads → thành công"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="mb-6 rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-400 dark:border-white/[0.08]">
-          Chỉ số sẽ xuất hiện sau khi hệ thống thu thập đủ dữ liệu (thường sau 24 giờ hoạt động).
-        </div>
-      )}
-
-      {/* ── Two-column lower section ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-        {/* Listing performance */}
+      {/* ── 2. Find land — saved searches ─────────────────────────── */}
+      {savedSearches.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="m-0 text-base font-bold text-gray-900 dark:text-white">
-              Hiệu quả tin đăng
-            </h2>
+            <h2 className="m-0 text-[15px] font-bold text-gray-900">Tìm kiếm đã lưu</h2>
             <Link
-              href="/quan-ly-tin-dang"
-              className="text-xs font-semibold text-[#0071E3] no-underline hover:underline dark:text-[#409CFF]"
+              href="/tim-kiem-da-luu"
+              className="text-[12px] font-semibold text-vio-forest no-underline hover:underline"
             >
               Xem tất cả
             </Link>
           </div>
-
-          {listings.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/[0.08]">
-              Chưa có tin đăng nào.{' '}
-              <Link href="/dang-tin" className="font-semibold text-[#0071E3] no-underline hover:underline dark:text-[#409CFF]">
-                Đăng tin ngay
-              </Link>
-            </div>
-          ) : (
-            <ul className="m-0 list-none space-y-3 p-0">
-              {listings.map((l: ListingPerformance) => (
-                <li key={l.listing_id}>
-                  <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_4px_rgb(0,0,0,0.04)] dark:border-white/[0.06] dark:bg-[#1C1C1E]">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/dat-nong-nghiep/chi-tiet/${l.listing_slug}`}
-                        className="block truncate text-sm font-semibold text-gray-900 no-underline hover:underline dark:text-white"
-                      >
-                        {l.listing_title ?? l.listing_id}
-                      </Link>
-                      <p className="m-0 mt-0.5 text-xs text-gray-400">
-                        {fmtNum(l.impressions_7d)} lượt xem · {l.inquiries_7d} yêu cầu · CTR {fmtPct(l.ctr_7d)}
-                      </p>
-                    </div>
-                    <span className={`shrink-0 text-xs font-bold ${TIER_COLOR[l.performance_tier] ?? 'text-gray-400'}`}>
-                      {TIER_LABEL[l.performance_tier] ?? l.performance_tier}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {savedSearches.map(s => <SavedSearchPill key={s.id} s={s} />)}
+          </div>
         </section>
+      )}
 
-        {/* Recent notifications */}
+      {/* ── 3. Evaluate land — saved listings ─────────────────────── */}
+      {savedListings.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="m-0 text-base font-bold text-gray-900 dark:text-white">
-              Thông báo gần đây
-            </h2>
-            {unreadCount > 0 && (
-              <span className="rounded-full bg-red-500 px-2 py-0.5 text-[0.65rem] font-bold text-white">
-                {unreadCount}
-              </span>
-            )}
+            <h2 className="m-0 text-[15px] font-bold text-gray-900">Đất đã lưu</h2>
+            <Link
+              href="/tin-da-luu"
+              className="text-[12px] font-semibold text-vio-forest no-underline hover:underline"
+            >
+              Xem tất cả
+            </Link>
           </div>
-
-          {notifications.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/[0.08]">
-              Chưa có thông báo nào.
-            </div>
-          ) : (
-            <ul className="m-0 list-none space-y-2 p-0">
-              {notifications.map(n => (
-                <li key={n.id}>
-                  <div className={[
-                    'rounded-2xl border px-4 py-3',
-                    !n.is_read
-                      ? 'border-[#0071E3]/20 bg-[#0071E3]/5 dark:border-[#409CFF]/20 dark:bg-[#409CFF]/10'
-                      : 'border-gray-100 bg-white shadow-[0_1px_4px_rgb(0,0,0,0.04)] dark:border-white/[0.06] dark:bg-[#1C1C1E]',
-                  ].join(' ')}>
-                    <p className="m-0 text-sm font-semibold text-gray-900 dark:text-white">
-                      {n.title}
-                    </p>
-                    {n.body && (
-                      <p className="m-0 mt-0.5 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">
-                        {n.body}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {savedListings.map(r => (
+              <SavedListingCard
+                key={r.listing_id}
+                listingId={r.listing_id}
+                l={r.listings!}
+              />
+            ))}
+          </div>
         </section>
+      )}
 
-      </div>
+      {/* ── 4. My listings — minimal seller row ───────────────────── */}
+      <section>
+        <div
+          className={[
+            'flex items-center justify-between gap-4 rounded-2xl',
+            'border border-gray-100 bg-white px-5 py-4',
+            'shadow-[0_1px_3px_rgb(0,0,0,0.04)]',
+          ].join(' ')}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                <rect x="3" y="3" width="18" height="18" rx="2.5" stroke="currentColor" strokeWidth="1.75"/>
+                <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <p className="m-0 text-[14px] font-semibold text-gray-900">
+                {activeCount > 0
+                  ? `${activeCount} tin đang hiển thị`
+                  : 'Chưa có tin đăng nào'}
+              </p>
+              <p className="m-0 mt-0.5 text-[12px] text-gray-400">
+                {activeCount > 0
+                  ? 'Đất của bạn đang được hiển thị cho người mua'
+                  : 'Đăng tin để tiếp cận hàng nghìn người tìm đất'}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {activeCount > 0 && (
+              <Link
+                href="/tin-dang-cua-toi"
+                className="text-[12px] font-semibold text-gray-400 no-underline hover:text-gray-700"
+              >
+                Quản lý
+              </Link>
+            )}
+            <Link
+              href="/dang-tin-dat"
+              className={[
+                'rounded-full bg-vio-forest px-4 py-2',
+                'text-[13px] font-bold text-white no-underline',
+                'hover:opacity-90',
+              ].join(' ')}
+            >
+              + Đăng tin
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      {/* ── Quick actions ── */}
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { href: '/dang-tin',        label: 'Đăng tin mới' },
-          { href: '/quan-ly-leads',   label: 'Xem Leads' },
-          { href: '/quan-ly-tin-dang', label: 'Quản lý tin' },
-          { href: '/ho-so',           label: 'Hồ sơ' },
-        ].map(a => (
-          <Link
-            key={a.href}
-            href={a.href}
-            className="flex items-center justify-center rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm font-semibold text-gray-700 no-underline shadow-[0_1px_4px_rgb(0,0,0,0.04)] transition-colors hover:border-gray-200 hover:bg-gray-50 dark:border-white/[0.06] dark:bg-[#1C1C1E] dark:text-gray-200 dark:hover:border-white/[0.1] dark:hover:bg-[#2C2C2E]"
-          >
-            {a.label}
-          </Link>
-        ))}
-      </div>
+      {/* ── 5. Upgrade to Pro ─────────────────────────────────────── */}
+      {!isPro && <ProUpgradeStrip />}
 
-    </main>
+    </div>
   )
 }

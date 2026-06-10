@@ -1,5 +1,3 @@
-'use server'
-
 // ── Merchant Insights — per-listing intelligence layer ────────────────────────
 //
 // Assembles all signal sources for one merchant in parallel:
@@ -14,8 +12,7 @@
 // Total: 5 real DB queries + 1 cache read, no N+1.
 // Cache: 5 min — matches the shortest cron refresh window.
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getLeadScores }  from '@/features/leads/api/lead-score.server'
 import type { BehavioralLead } from '@/features/leads/types'
 
@@ -52,8 +49,7 @@ export interface ListingInsight {
 
 // ── Core query ────────────────────────────────────────────────────────────────
 
-const _cachedInsights = unstable_cache(
-  async (merchantId: string): Promise<ListingInsight[]> => {
+async function _getInsights(merchantId: string): Promise<ListingInsight[]> {
     const supabase = await createClient()
 
     // ── 1. Merchant's published listings ────────────────────────────────────
@@ -198,14 +194,11 @@ const _cachedInsights = unstable_cache(
         topKeywords: keywords.slice(0, 5),
       }
     })
-  },
-  ['merchant', 'insights'],
-  { revalidate: 300, tags: ['listings', 'recommendations', 'leads'] },
-)
+}
 
 export async function getMerchantInsights(merchantId: string): Promise<ListingInsight[]> {
   try {
-    return await _cachedInsights(merchantId)
+    return await _getInsights(merchantId)
   } catch (err) {
     console.error('[getMerchantInsights]', (err as Error).message)
     return []

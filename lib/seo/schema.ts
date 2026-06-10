@@ -238,6 +238,87 @@ export function eventSchema(opts: {
   }
 }
 
+// ── Place & ItemList (Phase 11) ───────────────────────────────────────────────
+
+export interface PlaceSchema {
+  '@context': 'https://schema.org'
+  '@type':    'Place'
+  name:        string
+  description?: string
+  geo?:        { '@type': 'GeoCoordinates'; latitude: number; longitude: number }
+  containedInPlace: { '@type': 'Country'; name: string }
+}
+
+export function placeSchema(opts: {
+  name:         string
+  description?: string
+  lat?:         number | null
+  lng?:         number | null
+}): PlaceSchema {
+  return {
+    '@context': 'https://schema.org',
+    '@type':    'Place',
+    name:        opts.name,
+    ...(opts.description ? { description: opts.description } : {}),
+    ...(opts.lat != null && opts.lng != null
+      ? { geo: { '@type': 'GeoCoordinates', latitude: opts.lat, longitude: opts.lng } }
+      : {}),
+    containedInPlace: { '@type': 'Country', name: 'Việt Nam' },
+  }
+}
+
+export interface ItemListSchema {
+  '@context':      'https://schema.org'
+  '@type':         'ItemList'
+  name:             string
+  numberOfItems:    number
+  itemListElement:  Array<{ '@type': 'ListItem'; position: number; url: string; name?: string }>
+}
+
+export function itemListSchema(opts: {
+  name:  string
+  items: Array<{ slug: string; title?: string }>
+}): ItemListSchema {
+  return {
+    '@context':    'https://schema.org',
+    '@type':       'ItemList',
+    name:           opts.name,
+    numberOfItems:  opts.items.length,
+    itemListElement: opts.items.map((item, i) => ({
+      '@type':  'ListItem',
+      position:  i + 1,
+      url:       `${BASE}/dat/${item.slug}`,
+      ...(item.title ? { name: item.title } : {}),
+    })),
+  }
+}
+
+// ── FAQ Page Schema (Phase 11) ────────────────────────────────────────────────
+
+export interface FaqPageSchema {
+  '@context': 'https://schema.org'
+  '@type':    'FAQPage'
+  mainEntity: Array<{
+    '@type':          'Question'
+    name:              string
+    acceptedAnswer:   { '@type': 'Answer'; text: string }
+  }>
+}
+
+export function faqPageSchema(
+  items: Array<{ question: string; answer: string }>,
+): FaqPageSchema {
+  return {
+    '@context': 'https://schema.org',
+    '@type':    'FAQPage',
+    mainEntity: items.map(({ question, answer }) => ({
+      '@type':        'Question',
+      name:            question,
+      acceptedAnswer: { '@type': 'Answer', text: answer },
+    })),
+  }
+}
+
 export function localBusinessSchema(opts: {
   name: string
   url: string

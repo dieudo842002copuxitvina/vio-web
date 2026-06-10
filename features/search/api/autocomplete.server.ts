@@ -1,7 +1,5 @@
-'use server'
-
-import { unstable_cache }  from 'next/cache'
-import { createClient }    from '@/lib/supabase/server'
+import { unstable_cache }    from 'next/cache'
+import { createCachedClient } from '@/lib/supabase/server'
 import { normalizeVi }     from '@/entities/search/model/normalize'
 import type { AutocompleteHit } from '@/entities/search/types'
 
@@ -17,7 +15,7 @@ const _cachedLandAutocomplete = unstable_cache(
     provinceId: number | null,
     limit:      number,
   ): Promise<AutocompleteHit[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase.rpc('autocomplete_listings', {
       q:          qNorm,
       p_type:     'land',
@@ -60,7 +58,7 @@ const _cachedMultiEntityAutocomplete = unstable_cache(
     qNorm: string,
     limit: number,
   ): Promise<GlobalAutocompleteHit[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase.rpc('search_autocomplete', {
       query:        qNorm,
       result_limit: limit,
