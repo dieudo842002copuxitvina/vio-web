@@ -12,6 +12,8 @@ import { getTrendingListings }          from '@/features/recommendation/api/reco
 import { TrackableCard }                from '@/features/recommendation/components/TrackableCard'
 import { faqPageSchema }                from '@/lib/seo/schema'
 import type { Province } from '@/lib/geo/types'
+import { ProvinceAgriSection }          from './_components/ProvinceAgriSection'
+import { ProvinceAtlasSection }         from './_components/ProvinceAtlasSection'
 
 // ── SEO content by region ───────────────────────────────────────────────────
 
@@ -165,10 +167,19 @@ export async function generateMetadata(
   const title       = `Đất nông nghiệp tại ${province.name_full}`
   const description = `Danh sách đất nông nghiệp cần bán và cho thuê tại ${province.name_full}. Đất lúa, cây ăn trái, cây lâu năm và nhiều loại đất khác.`
 
+  const enc   = encodeURIComponent
+  const ogUrl = `/api/og?type=province&name=${enc(province.name)}&count=0&region=${enc(province.region ?? '')}`
+
   return {
     title,
     description,
-    openGraph: { title, description, url: `/dat-nong-nghiep/${province.slug}` },
+    openGraph: {
+      title,
+      description,
+      url:    `/dat-nong-nghiep/${province.slug}`,
+      images: [{ url: ogUrl, width: 1200, height: 630, alt: title }],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: [ogUrl] },
     alternates: { canonical: `/dat-nong-nghiep/${province.slug}` },
   }
 }
@@ -269,15 +280,11 @@ export default async function LandProvincePage(
       <meta name="robots" content={robots} />
 
       {/* Structured data */}
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaBreadcrumb) }} />
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaPlace) }} />
       {schemaItems && (
-        // eslint-disable-next-line react/no-danger
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaItems) }} />
       )}
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFaq) }} />
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
@@ -474,6 +481,22 @@ export default async function LandProvincePage(
               </ul>
             </section>
           )}
+
+          {/* ── Agricultural Knowledge Graph ──────────────────────────── */}
+          <div className="mt-16">
+            <div className="mb-5">
+              <p className="text-[0.75rem] font-bold uppercase tracking-[0.14em] text-gray-400">
+                Dữ liệu nông nghiệp
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-900">
+                Hồ sơ nông nghiệp {province.name}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <ProvinceAgriSection provinceSlug={province.slug} />
+              <ProvinceAtlasSection provinceSlug={province.slug} />
+            </div>
+          </div>
 
           {/* ── SEO agricultural content module ───────────────────────── */}
           {regionContent && (

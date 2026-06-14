@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Phone, MessageCircle, BadgeCheck } from 'lucide-react'
 import type { Storefront } from '../storefront.types'
 
@@ -20,11 +21,12 @@ export function StoreHero({
       {/* Banner — gradient scrim adds depth at the bottom edge */}
       <div className="relative h-44 sm:h-56">
         {banner_url ? (
-          <img
+          <Image
             src={banner_url}
             alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
+            fill
+            className="object-cover"
+            unoptimized
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-[var(--hero-a)] to-[var(--hero-b)]" />
@@ -44,11 +46,12 @@ export function StoreHero({
                        shadow-[0_0_0_3px_var(--surface),0_8px_24px_rgb(0,0,0,0.18)] sm:h-[5.5rem] sm:w-[5.5rem]"
           >
             {avatar_url ? (
-              <img
+              <Image
                 src={avatar_url}
                 alt={business_name}
-                className="h-full w-full object-cover"
-                loading="lazy"
+                fill
+                className="object-cover"
+                unoptimized
               />
             ) : (
               <span

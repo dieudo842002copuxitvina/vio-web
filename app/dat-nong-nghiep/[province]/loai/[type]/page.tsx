@@ -1,12 +1,15 @@
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata }      from 'next'
 import Link                   from 'next/link'
-import { createClient }       from '@/lib/supabase/server'
+import { createClient, createCachedClient } from '@/lib/supabase/server'
 import { LandListingCard }    from '@/entities/listing'
 import { listingToLandCard }  from '@/entities/listing'
 import { getPageState, getRobotsMeta } from '@/lib/seo/thin-page'
 import { breadcrumbSchema, itemListSchema, faqPageSchema } from '@/lib/seo/schema'
 import { seoRowToListing }    from '@/features/seo/api/seo-utils'
+import { getMarketStats }     from '@/lib/seo/statistics.server'
+import { buildLandTypeFAQ }   from '@/lib/seo/faq'
+import { MarketStatsModule }  from '../../_components/MarketStatsModule'
 import type { Province }      from '@/lib/geo/types'
 
 export const revalidate = 3600
@@ -70,30 +73,44 @@ export async function generateMetadata(
   }
 }
 
-// ── FAQ ───────────────────────────────────────────────────────────────────────
+// ── generateStaticParams ──────────────────────────────────────────────────────
+// Pre-build province × type combos that have >= 3 listings at build time.
 
-function buildFAQ(
-  provinceName: string,
-  landLabel:    string,
-): Array<{ question: string; answer: string }> {
-  return [
-    {
-      question: `Giá ${landLabel} tại ${provinceName} hiện nay là bao nhiêu?`,
-      answer:   `Giá ${landLabel} tại ${provinceName} dao động tuỳ vị trí, diện tích, pháp lý và tiện ích hạ tầng. Xem danh sách tin đăng cập nhật trên VIO AGRI để biết mức giá thực tế đang giao dịch trong khu vực.`,
-    },
-    {
-      question: `${landLabel} tại ${provinceName} phù hợp trồng cây gì?`,
-      answer:   `Loại cây phù hợp phụ thuộc vào điều kiện đất, khí hậu và nguồn nước tại từng tiểu vùng trong ${provinceName}. Xem mục "Tiềm năng canh tác" trên từng tin đăng để có thông tin chi tiết và khuyến nghị cây trồng phù hợp.`,
-    },
-    {
-      question: `Mua ${landLabel} tại ${provinceName} cần lưu ý gì về pháp lý?`,
-      answer:   `Cần kiểm tra: (1) Sổ đỏ/sổ hồng chính chủ, (2) Không nằm trong vùng quy hoạch đóng băng, (3) Không có tranh chấp, thế chấp, (4) Xác minh ranh giới thực địa khớp sổ sách. VIO AGRI chỉ hiển thị tin đăng đã qua xét duyệt.`,
-    },
-    {
-      question: `Có tin đăng ${landLabel} tại ${provinceName} nào đang bán không?`,
-      answer:   `Có. Trang này hiển thị các tin đăng ${landLabel} tại ${provinceName} đang rao bán, được cập nhật liên tục. Mỗi tin đăng có thông tin diện tích, giá, pháp lý và thông tin liên hệ trực tiếp với chủ đất.`,
-    },
-  ]
+export async function generateStaticParams() {
+  const supabase = createCachedClient()
+  const { data } = await supabase
+    .from('listings')
+    .select('province_id, land_type, provinces!inner(slug)')
+    .eq('is_public', true)
+    .eq('moderation_status', 'approved')
+    .not('land_type', 'is', null)
+    .limit(5_000)
+
+  if (!data) return []
+
+  // Count by province × land_type
+  const counts: Record<string, number> = {}
+  const slugMap: Record<string, string> = {}
+  for (const row of data) {
+    const r = row as unknown as { province_id: string; land_type: string; provinces: { slug: string } }
+    const key = `${r.province_id}::${r.land_type}`
+    counts[key] = (counts[key] ?? 0) + 1
+    slugMap[r.province_id] = r.provinces.slug
+  }
+
+  // Reverse map: land_type DB key → URL slug
+  const typeToSlug: Record<string, string> = {
+    lua: 'lua', rau_mau: 'rau-mau', cay_lau_nam: 'cay-lau-nam',
+    cay_an_trai: 'an-trai', lam_nghiep: 'lam-nghiep', mat_nuoc: 'mat-nuoc', hon_hop: 'hon-hop',
+  }
+
+  return Object.entries(counts)
+    .filter(([, n]) => n >= 3)
+    .map(([key]) => {
+      const [provinceId, landType] = key.split('::')
+      return { province: slugMap[provinceId], type: typeToSlug[landType] ?? landType }
+    })
+    .filter(p => p.province && p.type)
 }
 
 // ── FAQ UI ────────────────────────────────────────────────────────────────────
@@ -150,20 +167,24 @@ export default async function ProvinceTypePage(
 
   const supabase = await createClient()
 
-  const { data: rows, count } = await supabase
-    .from('listings')
-    .select(
-      'id, slug, title, cover_url, price_text, location_text, land_type, is_featured, is_verified, published_at',
-      { count: 'exact' },
-    )
-    .eq('listing_type', 'land')
-    .eq('is_public', true)
-    .eq('moderation_status', 'approved')
-    .eq('province_id', province.id)
-    .eq('land_type', def.key)
-    .order('is_featured', { ascending: false })
-    .order('published_at', { ascending: false })
-    .limit(48)
+  const [{ data: rows, count }, stats] = await Promise.all([
+    supabase
+      .from('listings')
+      .select(
+        'id, slug, title, cover_url, price_text, location_text, land_type, is_featured, is_verified, published_at',
+        { count: 'exact' },
+      )
+      .eq('listing_type', 'land')
+      .eq('is_public', true)
+      .eq('moderation_status', 'approved')
+      .eq('province_id', province.id)
+      .eq('land_type', def.key)
+      .order('is_featured', { ascending: false })
+      .order('published_at', { ascending: false })
+      .limit(48),
+
+    getMarketStats({ provinceId: Number(province.id), landType: def.key }),
+  ])
 
   const total     = count ?? 0
   const items     = rows ?? []
@@ -174,7 +195,7 @@ export default async function ProvinceTypePage(
   // Other land types in this province for cross-linking
   const otherTypes = Object.entries(LAND_TYPES).filter(([k]) => k !== tSlug)
 
-  const faqItems = buildFAQ(province.name, def.label)
+  const faqItems = buildLandTypeFAQ(def.label, province.name)
 
   // Structured data
   const schemaBreadcrumb = breadcrumbSchema([
@@ -196,13 +217,10 @@ export default async function ProvinceTypePage(
   return (
     <>
       <meta name="robots" content={robots} />
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaBreadcrumb) }} />
       {schemaItems && (
-        // eslint-disable-next-line react/no-danger
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaItems) }} />
       )}
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFaq) }} />
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
@@ -247,6 +265,13 @@ export default async function ProvinceTypePage(
           <p className="mt-3 max-w-2xl text-[1rem] leading-relaxed text-gray-500">
             {def.description} Kết nối trực tiếp với chủ đất tại {province.name} — không qua môi giới.
           </p>
+
+          {/* Market statistics */}
+          {stats.listing_count > 0 && (
+            <div className="mt-5">
+              <MarketStatsModule stats={stats} />
+            </div>
+          )}
 
           {/* Cross-type pills */}
           <div className="mt-6 flex flex-wrap gap-2">

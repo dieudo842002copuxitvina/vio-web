@@ -43,12 +43,12 @@ export function GeoSelector({
   // Fetch districts when province changes
   useEffect(() => {
     if (!provinceId) {
-      setDistricts([])
+      void Promise.resolve().then(() => setDistricts([]))
       return
     }
 
     let cancelled = false
-    setLoading(true)
+    void Promise.resolve().then(() => setLoading(true))
 
     const supabase = createClient()
     supabase

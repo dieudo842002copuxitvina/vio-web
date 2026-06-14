@@ -123,7 +123,6 @@ export function LandSearchAutocomplete({
           autoComplete="off"
           aria-label="Tìm kiếm đất nông nghiệp"
           aria-autocomplete="list"
-          aria-expanded={open}
           className="flex-1 min-w-0 bg-transparent text-[1rem] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none [&::-webkit-search-cancel-button]:hidden"
         />
 

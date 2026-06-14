@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import dynamic                            from 'next/dynamic'
 import type { LandListingHit }            from '@/features/search/api/land-search.server'
 
@@ -205,10 +205,11 @@ function LeafletMap({
       }
     })
 
+    const markers = markersRef.current
     return () => {
       mounted = false
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
-      markersRef.current.clear()
+      markers.clear()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingsKey, activeProvinceId])

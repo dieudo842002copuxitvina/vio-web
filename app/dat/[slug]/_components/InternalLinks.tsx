@@ -64,7 +64,7 @@ function LinkChip({ href, label }: { href: string; label: string }) {
 export function InternalLinks({
   provinceSlug, provinceName,
   districtSlug, districtName,
-  landType, landTypeLabel: _lt,
+  landType,
 }: InternalLinksProps) {
   const landLabel  = landType ? (LAND_TYPE_LABELS[landType] ?? null) : null
   const relatedKeys = landType ? (RELATED_TYPES[landType] ?? []) : []

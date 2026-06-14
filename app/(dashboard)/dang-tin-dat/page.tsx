@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef }   from 'react'
+import Image                              from 'next/image'
 import { useRouter }                      from 'next/navigation'
 import { createClient }                   from '@/lib/supabase/client'
 import { LAND_TYPE_LABELS }               from '@/entities/listing'
@@ -112,7 +113,10 @@ export default function DangTinDatPage() {
 
   // Cascade: province → districts
   useEffect(() => {
-    if (!form.province_id) { setDistricts([]); setWards([]); return }
+    if (!form.province_id) {
+      void Promise.resolve().then(() => { setDistricts([]); setWards([]) })
+      return
+    }
     createClient()
       .from('districts')
       .select('id, name')
@@ -126,7 +130,10 @@ export default function DangTinDatPage() {
 
   // Cascade: district → wards
   useEffect(() => {
-    if (!form.district_id) { setWards([]); return }
+    if (!form.district_id) {
+      void Promise.resolve().then(() => setWards([]))
+      return
+    }
     createClient()
       .from('wards')
       .select('id, name')
@@ -502,7 +509,7 @@ export default function DangTinDatPage() {
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {images.map((img, idx) => (
                     <div key={idx} className="relative aspect-square overflow-hidden rounded-xl">
-                      <img src={img.objectUrl} alt="" className="h-full w-full object-cover" />
+                      <Image src={img.objectUrl} alt="" fill className="object-cover" unoptimized />
                       <button
                         type="button"
                         onClick={() => removeImage(idx)}

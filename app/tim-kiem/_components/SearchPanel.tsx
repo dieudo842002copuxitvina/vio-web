@@ -6,7 +6,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { LandSearchCard }                          from './LandSearchCard'
 import { FilterPanel }                             from './FilterPanel'
 import { SaveSearchButton }                        from './SaveSearchButton'
-import type { LandListingHit, LandBrowseResult, ProvinceOption } from '@/features/search/api/land-search.server'
+import type { LandBrowseResult, ProvinceOption } from '@/features/search/api/land-search.server'
 
 // LeafletMap loaded only in the browser (Leaflet requires window)
 const LeafletMap = dynamic(

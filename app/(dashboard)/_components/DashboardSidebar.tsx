@@ -2,6 +2,7 @@
 
 import Link            from 'next/link'
 import { usePathname } from 'next/navigation'
+import { logout }      from '@/features/auth/api/auth.server'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,24 @@ function ProfileIcon() {
   )
 }
 
+function PromoteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 11l19-9-9 19-2-8-8-2z" stroke="currentColor" strokeWidth="1.75"
+            strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
+function MarketplaceIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 9l9-6 9 6v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+      <path d="M9 22V12h6v10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 // ── Nav structure ──────────────────────────────────────────────────────────────
 
 const NAV_GROUPS = [
@@ -105,6 +124,8 @@ const NAV_GROUPS = [
       { label: 'Phân tích',         href: '/phan-tich',          icon: <AnalyticsIcon />, exact: false },
       { label: 'Quản lý leads',     href: '/quan-ly-leads',      icon: <LeadsIcon />,     exact: false },
       { label: 'Lịch hẹn',         href: '/quan-ly-lich-hen',   icon: <CalendarIcon />,  exact: false },
+      { label: 'Xúc tiến tin',      href: '/xuc-tien-tin-dang',  icon: <PromoteIcon />,     exact: false },
+      { label: 'Thị trường',        href: '/marketplace',         icon: <MarketplaceIcon />, exact: false },
     ],
   },
   {
@@ -203,7 +224,27 @@ export function DashboardSidebar({ displayName, email, isPro }: DashboardSidebar
 
         <div className="flex-1"/>
 
-        {/* ── User chip ──────────────────────────────────────────────── */}
+        {/* ── Pro upgrade nudge (free users only) ───────────────────── */}
+        {!isPro && (
+          <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-gray-900 px-4 py-4">
+            <p className="m-0 text-[11px] font-bold uppercase tracking-[0.1em] text-white/40">
+              Pro
+            </p>
+            <p className="m-0 mt-1 text-[13px] font-semibold text-white/90 leading-snug">
+              Mở khoá leads nóng, spotlight & phân tích đầy đủ
+            </p>
+            <Link
+              href="/nang-cap?reason=sidebar"
+              className="mt-3 flex h-8 w-full items-center justify-center rounded-xl
+                         bg-white text-[12px] font-bold text-gray-900 no-underline
+                         transition-opacity hover:opacity-90"
+            >
+              Nâng cấp Pro →
+            </Link>
+          </div>
+        )}
+
+        {/* ── User chip + logout ─────────────────────────────────────── */}
         <div className="border-t border-neutral-100 px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full
@@ -220,6 +261,20 @@ export function DashboardSidebar({ displayName, email, isPro }: DashboardSidebar
                 )}
               </p>
             </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                title="Đăng xuất"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400
+                           transition-colors hover:bg-red-50 hover:text-red-500"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </form>
           </div>
         </div>
 

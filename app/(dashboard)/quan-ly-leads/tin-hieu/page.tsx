@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image             from 'next/image'
 import Link              from 'next/link'
 import { createClient }  from '@/lib/supabase/server'
 import { getLeadScores } from '@/features/leads/api/lead-score.server'
@@ -61,7 +62,7 @@ function LeadScoreCard({ lead }: { lead: BehavioralLead }) {
         <div className="flex items-start gap-3">
           <div className="relative shrink-0">
             {lead.profileAvatar ? (
-              <img src={lead.profileAvatar} alt="" className="h-10 w-10 rounded-full object-cover" loading="lazy" />
+              <Image src={lead.profileAvatar} alt="" width={40} height={40} className="h-10 w-10 rounded-full object-cover" unoptimized />
             ) : (
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500 select-none dark:bg-gray-800 dark:text-gray-400">
                 {initials(lead.profileName)}

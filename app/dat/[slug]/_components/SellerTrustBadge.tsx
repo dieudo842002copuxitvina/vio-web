@@ -59,10 +59,6 @@ export function SellerTrustBadge({
   const SWEEP   = ((360 - GAP_DEG) / 360) * CIRCUM
   const offset  = SWEEP - (score / 100) * SWEEP
   const startAngle = -90 + GAP_DEG / 2 // start at left of gap
-  const toRad   = (d: number) => (d * Math.PI) / 180
-  const x1 = CX + RADIUS * Math.cos(toRad(startAngle))
-  const y1 = CY + RADIUS * Math.sin(toRad(startAngle))
-
   return (
     <div
       className="rounded-[20px] border px-4 py-4"

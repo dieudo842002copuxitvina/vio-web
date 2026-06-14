@@ -4,6 +4,12 @@
 import { createClient }   from '@/lib/supabase/server'
 import { publicApproved } from '@/lib/supabase/query-helpers'
 import type { Listing, ListingType } from '../model/types'
+import type {
+  ListingInfrastructure,
+  ListingAgriculture,
+  ListingLegal,
+  ListingCompleteness,
+} from '../model/normalized-types'
 
 // ── Shared detail types ───────────────────────────────────────────────────────
 
@@ -38,6 +44,11 @@ export interface ListingDetailResult {
   // Display-ready attribute values keyed by schema key, resolved from listing_attribute_values.
   // e.g. { area_m2: '1.200 m²', legal_status: 'Sổ đỏ', soil_type: 'Đất thịt' }
   attrs:      Record<string, string | null>
+  // Normalized sub-entities (null for listings created before migration 030)
+  infrastructure: ListingInfrastructure | null
+  agriculture:    ListingAgriculture    | null
+  legal:          ListingLegal          | null
+  completeness:   ListingCompleteness   | null
 }
 
 // Explicit column list — excludes search_vector (tsvector, not useful to callers).
@@ -304,7 +315,10 @@ export async function getListingDetail(slug: string): Promise<ListingDetailResul
   if (!listingRaw) return null
   const listing = listingRaw as unknown as Listing
 
-  const [mediaRes, attrRes, provinceRes, districtRes, profileRes, nearby] = await Promise.all([
+  const [
+    mediaRes, attrRes, provinceRes, districtRes, profileRes, nearby,
+    infraRes, agriRes, legalRes, completenessRes,
+  ] = await Promise.all([
     supabase
       .from('listing_media')
       .select('id, url, alt, type, sort_order')
@@ -333,6 +347,12 @@ export async function getListingDetail(slug: string): Promise<ListingDetailResul
       listing.type,
       4,
     ),
+
+    // Normalized sub-entities (may be null for listings pre-migration 030)
+    supabase.from('listing_infrastructure').select('*').eq('listing_id', listing.id).maybeSingle(),
+    supabase.from('listing_agriculture').select('*').eq('listing_id', listing.id).maybeSingle(),
+    supabase.from('listing_legal_metadata').select('*').eq('listing_id', listing.id).maybeSingle(),
+    supabase.from('listing_completeness').select('*').eq('listing_id', listing.id).maybeSingle(),
   ])
 
   const media = ((mediaRes.data ?? []) as ListingMediaItem[])
@@ -358,7 +378,11 @@ export async function getListingDetail(slug: string): Promise<ListingDetailResul
       ward:     null,
     },
     nearby,
-    profile: profileRes.data as ListingSellerProfile | null,
+    profile:        profileRes.data as ListingSellerProfile | null,
     attrs,
+    infrastructure: infraRes.data        as unknown as ListingInfrastructure | null,
+    agriculture:    agriRes.data         as unknown as ListingAgriculture    | null,
+    legal:          legalRes.data        as unknown as ListingLegal          | null,
+    completeness:   completenessRes.data as unknown as ListingCompleteness   | null,
   }
 }

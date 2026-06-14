@@ -7,29 +7,24 @@ import { UserMenuClient }         from './UserMenuClient'
 // Wrapped in <Suspense fallback={<UserMenuSkeleton />}> by the layout.
 
 export async function UserMenuServer() {
+  let userProp: { id: string; email: string; name: string } | null = null
+  let isPro = false
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) return <UserMenuClient user={null} isPro={false} />
-
-    const sub   = await getActiveSubscription(user.id)
-    const isPro = sub?.status === 'active'
-
-    return (
-      <UserMenuClient
-        user={{
-          id:    user.id,
-          email: user.email ?? '',
-          name:  (user.user_metadata?.full_name as string | undefined) ?? '',
-        }}
-        isPro={isPro}
-      />
-    )
+    if (user) {
+      const sub = await getActiveSubscription(user.id)
+      isPro = sub?.status === 'active'
+      userProp = {
+        id:    user.id,
+        email: user.email ?? '',
+        name:  (user.user_metadata?.full_name as string | undefined) ?? '',
+      }
+    }
   } catch {
     // Auth failure is non-fatal — show signed-out state
-    return <UserMenuClient user={null} isPro={false} />
   }
+  return <UserMenuClient user={userProp} isPro={isPro} />
 }
 
 // ── UserMenuSkeleton ──────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { notFound, redirect }   from 'next/navigation'
+import { notFound }              from 'next/navigation'
 import type { Metadata }         from 'next'
 import Link                      from 'next/link'
 import Image                     from 'next/image'
@@ -143,6 +143,8 @@ export async function generateMetadata(
   }
 }
 
+function msAgo(days: number) { return Date.now() - days * 86_400_000 }
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 interface PageProps {
@@ -163,14 +165,14 @@ export default async function ProvinceLandPage({ params }: PageProps) {
     'district_id', 'published_at',
   ].join(', ')
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const thirtyDaysAgo = new Date(msAgo(30)).toISOString()
 
   // ── Parallel data fetches ────────────────────────────────────────────────────
   const [
     allListingsRes,
     districtRes,
     recentListingsRes,
-    savesRes,
+    _savesRes,
     similarProvRes,
   ] = await Promise.all([
 
@@ -298,7 +300,6 @@ export default async function ProvinceLandPage({ params }: PageProps) {
       {/* ── JSON-LD ─────────────────────────────────────────────── */}
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 

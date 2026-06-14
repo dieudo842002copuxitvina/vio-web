@@ -7,6 +7,7 @@ import {
   useCallback,
   useTransition,
 } from 'react'
+import Image                  from 'next/image'
 import Link                   from 'next/link'
 import { useRouter }          from 'next/navigation'
 import { universalSearch }    from '../api/search.server'
@@ -66,7 +67,7 @@ function HitRow({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
     >
       {hit.image_url ? (
         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-          <img src={hit.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+          <Image src={hit.image_url} alt="" width={40} height={40} className="h-full w-full object-cover" unoptimized />
         </div>
       ) : (
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-lg dark:bg-gray-800">
@@ -115,11 +116,10 @@ export function SearchOverlay({ isOpen, onClose, trending = [] }: SearchOverlayP
   // Focus input on open
   useEffect(() => {
     if (isOpen) {
-      setRecent(getRecent())
+      void Promise.resolve().then(() => setRecent(getRecent()))
       setTimeout(() => inputRef.current?.focus(), 50)
     } else {
-      setQuery('')
-      setResults(null)
+      void Promise.resolve().then(() => { setQuery(''); setResults(null) })
     }
   }, [isOpen])
 

@@ -70,7 +70,7 @@ interface CatData {
   price_trend_7d:  number
 }
 
-function FeaturedCategoryCard({ cat, provinceSlug }: { cat: CatData; provinceSlug: string }) {
+function FeaturedCategoryCard({ cat }: { cat: CatData; provinceSlug: string }) {
   const heat    = HEAT_CONFIG[cat.heat_tier]
   const label   = CATEGORY_LABEL[cat.category_id] ?? `Danh mục ${cat.category_id}`
   const icon    = CATEGORY_ICON[cat.category_id]  ?? '🌾'

@@ -38,13 +38,11 @@ export interface MobileDrawerProps {
 export function MobileDrawer({ isOpen, onClose, authSlot }: MobileDrawerProps) {
   const pathname  = usePathname()
   const closeRef  = useRef(onClose)
-  closeRef.current = onClose
+  useEffect(() => { closeRef.current = onClose })
 
   // Close on route change
   useEffect(() => {
     closeRef.current()
-  // pathname is the only meaningful dep here — onClose identity is irrelevant
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   // Lock body scroll while open

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link    from 'next/link'
-import { MapPin, ChevronDown, X } from 'lucide-react'
+import { MapPin, ChevronDown } from 'lucide-react'
 
 const PROVINCES = [
   { slug: null,         name: 'Toàn quốc',   count: null },

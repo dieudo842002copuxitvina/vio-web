@@ -30,7 +30,7 @@ function formatVnd(n: number): string {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function PlanCard({
-  id, name, priceVnd, period, description, cta, features, highlighted,
+  name, priceVnd, period, description, cta, features, highlighted,
 }: typeof PLAN_DISPLAY[keyof typeof PLAN_DISPLAY]) {
   return (
     <div className={[

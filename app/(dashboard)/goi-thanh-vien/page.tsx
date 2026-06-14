@@ -190,12 +190,14 @@ function FreeUpgradeCard() {
 
 function ComparisonTable() {
   const rows = [
-    { label: 'Số tin đăng',          free: '10',        pro: '100'          },
-    { label: 'Phân tích',            free: '7 ngày',    pro: '30 ngày'      },
-    { label: 'CRM Leads',            free: 'Cơ bản',    pro: 'Đầy đủ'       },
-    { label: 'Lead nóng & rất nóng', free: '—',         pro: '✓'            },
-    { label: 'Smart Matching',       free: '—',         pro: '✓'            },
-    { label: 'Featured Listing',     free: '—',         pro: '✓'            },
+    { label: 'Số tin đăng',             free: '10',         pro: '100'          },
+    { label: 'Phân tích',               free: '7 ngày',     pro: '30 ngày'      },
+    { label: 'Lead Funnel Analytics',   free: 'Cơ bản',     pro: 'Đầy đủ'       },
+    { label: 'Lead nóng & rất nóng',    free: '—',          pro: '✓'            },
+    { label: 'ROI & Health Score',      free: '—',          pro: '✓'            },
+    { label: 'Smart Matching',          free: '—',          pro: '✓'            },
+    { label: 'Boost 30 ngày / Spotlight', free: '—',        pro: '✓'            },
+    { label: 'Featured Listing',        free: '—',          pro: '✓'            },
   ]
 
   return (
@@ -251,10 +253,35 @@ export default async function GoiThanhVienPage() {
           )}
         </div>
 
-        {/* Right: comparison */}
-        <div>
-          <h2 className="m-0 mb-4 text-[15px] font-bold text-gray-900">So sánh gói</h2>
-          <ComparisonTable />
+        {/* Right: comparison + promote CTA */}
+        <div className="space-y-5">
+          <div>
+            <h2 className="m-0 mb-4 text-[15px] font-bold text-gray-900">So sánh gói</h2>
+            <ComparisonTable />
+          </div>
+
+          {/* Promote Center cross-sell */}
+          <div className="overflow-hidden rounded-2xl border border-amber-200/70 bg-amber-50">
+            <div className="px-5 py-4">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-amber-600">
+                Xúc tiến tin đăng
+              </p>
+              <p className="m-0 mt-1 text-[14px] font-semibold text-gray-900">
+                Tăng khả năng hiển thị với Boost & Spotlight
+              </p>
+              <p className="m-0 mt-1 text-[13px] text-gray-500">
+                Độc lập với gói thành viên — Boost 7 ngày cho tất cả người dùng.
+              </p>
+            </div>
+            <div className="border-t border-amber-200/60 bg-white/60 px-5 py-3">
+              <Link
+                href="/xuc-tien-tin-dang"
+                className="text-[13px] font-semibold text-amber-700 no-underline hover:underline"
+              >
+                Xem Promote Center →
+              </Link>
+            </div>
+          </div>
         </div>
 
       </div>

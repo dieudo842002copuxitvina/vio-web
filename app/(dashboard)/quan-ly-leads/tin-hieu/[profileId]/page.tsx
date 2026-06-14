@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image             from 'next/image'
 import Link              from 'next/link'
 import { notFound }      from 'next/navigation'
 import { createClient }  from '@/lib/supabase/server'
@@ -155,11 +156,13 @@ export default async function LeadDetailPage({ params }: PageProps) {
       <div className="mb-8 flex items-center gap-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_1px_6px_rgb(0,0,0,0.06)] dark:border-white/[0.06] dark:bg-[#1C1C1E]">
 
         {profileAvatar ? (
-          <img
+          <Image
             src={profileAvatar}
             alt=""
+            width={64}
+            height={64}
             className="h-16 w-16 shrink-0 rounded-full object-cover"
-            loading="eager"
+            unoptimized
           />
         ) : (
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xl font-bold text-gray-500 select-none dark:bg-gray-800 dark:text-gray-400">

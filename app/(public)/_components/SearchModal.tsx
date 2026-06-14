@@ -37,7 +37,7 @@ export function SearchModal() {
   // Focus & reset when opened
   useEffect(() => {
     if (!isSearchOpen) return
-    setQuery('')
+    void Promise.resolve().then(() => setQuery(''))
     const id = setTimeout(() => inputRef.current?.focus(), 60)
     return () => clearTimeout(id)
   }, [isSearchOpen])

@@ -8,9 +8,11 @@ const PROTECTED = [
   '/quan-ly',
   '/dang-tin',
   '/ho-so',
+  '/admin',
+  '/agency',
 ]
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // updateSession() creates a Supabase SSR client, refreshes the auth token if
   // needed, and returns the response object that carries any new Set-Cookie
   // headers.  We MUST return (or copy from) that response — never construct a
@@ -26,13 +28,12 @@ export async function proxy(request: NextRequest) {
   // ── Redirect unauthenticated users away from protected routes ─────────────
   if (!user && isProtected) {
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/dang-nhap'
+    redirectUrl.pathname = '/login'
     redirectUrl.searchParams.set('next', pathname)
 
     const redirectResponse = NextResponse.redirect(redirectUrl)
 
     // Copy refreshed session cookies so the token survives the redirect.
-    // Without this, a token refreshed during getUser() is silently dropped.
     supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) =>
       redirectResponse.cookies.set(name, value, opts),
     )
@@ -41,7 +42,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Redirect authenticated users away from auth pages ────────────────────
-  if (user && (pathname === '/dang-nhap' || pathname === '/login' || pathname === '/dang-ky')) {
+  if (user && (pathname === '/login' || pathname === '/dang-ky')) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/dashboard'
     redirectUrl.searchParams.delete('next')
@@ -55,8 +56,6 @@ export async function proxy(request: NextRequest) {
     return redirectResponse
   }
 
-  // For all non-redirect paths, return supabaseResponse as-is so Set-Cookie
-  // headers from any token refresh are forwarded to the browser.
   return supabaseResponse
 }
 
