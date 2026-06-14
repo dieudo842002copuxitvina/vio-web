@@ -64,7 +64,8 @@ function ProvinceCard({
 }: (typeof PROVINCES)[number]) {
   return (
     <Link
-      href={`/tinh/${slug}`}
+      href={`/dat-nong-nghiep/${slug}`}
+      prefetch={false}
       className="group relative block aspect-[4/3] overflow-hidden rounded-[16px]
                  no-underline shadow-[0_2px_8px_rgba(0,0,0,0.06)]
                  transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
@@ -132,7 +133,8 @@ export function ProvinceGrid() {
         {/* View all link */}
         <div className="mt-10 text-center">
           <Link
-            href="/tinh"
+            href="/dat-nong-nghiep"
+            prefetch={false}
             className="inline-flex items-center gap-2 rounded-full border border-[#1d1d1f]/12
                        bg-white px-6 py-3 text-[15px] font-semibold text-[#1d1d1f]
                        no-underline shadow-[0_1px_4px_rgba(0,0,0,0.06)]

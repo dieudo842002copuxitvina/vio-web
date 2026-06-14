@@ -3,6 +3,7 @@ import Link              from 'next/link'
 import Image             from 'next/image'
 import { createClient }  from '@/lib/supabase/server'
 import type { ListingCompleteness, CompletenessTier } from '@/entities/listing/model/normalized-types'
+import { ArchiveListingButton } from './_components/ArchiveListingButton'
 
 export const metadata: Metadata = { title: 'Tin đăng của tôi — VIO AGRI' }
 export const revalidate = 0
@@ -191,6 +192,9 @@ function MobileListingCard({
                   Xem
                 </Link>
               )}
+              {l.status !== 'draft' && l.status !== 'archived' && (
+                <ArchiveListingButton listingId={l.id} />
+              )}
             </div>
           </div>
         </div>
@@ -271,6 +275,9 @@ function TableRow({
             >
               Xem
             </Link>
+          )}
+          {l.status !== 'draft' && l.status !== 'archived' && (
+            <ArchiveListingButton listingId={l.id} />
           )}
         </div>
       </td>

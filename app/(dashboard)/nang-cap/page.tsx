@@ -7,6 +7,7 @@ import {
   getActiveSubscription,
 }                          from '@/features/billing/api/subscription.server'
 import { PLAN_DISPLAY }    from '@/features/billing/types'
+import { BoostCheckoutButton } from '@/app/(dashboard)/xuc-tien-tin-dang/_components/BoostCheckoutButton'
 
 export const metadata: Metadata = { title: 'Nâng cấp Pro' }
 export const revalidate = 0
@@ -133,18 +134,15 @@ export default async function NangCapPage({ searchParams }: PageProps) {
             ))}
           </ul>
 
-          {/* CTA — contact admin in current architecture */}
-          <div className="mt-8 rounded-2xl bg-white/10 px-5 py-4 text-sm text-white/80 dark:bg-black/10 dark:text-black/60">
-            Tích hợp thanh toán đang được chuẩn bị.
-            Liên hệ admin để kích hoạt ngay.
-          </div>
-
-          <Link
-            href="/pricing"
-            className="mt-4 flex items-center justify-center rounded-full border border-white/30 py-3 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-75 dark:border-black/20 dark:text-black"
-          >
-            Xem bảng giá đầy đủ →
-          </Link>
+          {/* CTA — VietQR checkout */}
+          <BoostCheckoutButton
+            productType="pro_monthly"
+            label={`Nâng cấp Pro — ${pro.priceVnd.toLocaleString('vi-VN')} ₫/tháng`}
+            className="mt-8 flex w-full cursor-pointer items-center justify-center rounded-full
+                       bg-white py-3.5 text-[15px] font-bold text-gray-900
+                       transition-opacity hover:opacity-85 disabled:opacity-50
+                       dark:bg-black dark:text-white"
+          />
         </div>
 
         {/* ── Back link ── */}

@@ -53,7 +53,7 @@ export default function DangKyPage() {
 
   if (success) {
     return (
-      <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-16">
+      <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm text-center">
           <div className="mb-4 text-5xl">📬</div>
           <h1 className="mb-2 text-xl font-bold text-neutral-900">Kiểm tra hộp thư!</h1>
@@ -69,18 +69,15 @@ export default function DangKyPage() {
             Về trang đăng nhập
           </Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-16">
+    <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
 
         <div className="mb-8 text-center">
-          <Link href="/" className="inline-block mb-4 text-xl font-bold tracking-tight text-neutral-900 no-underline">
-            VIO AGRI
-          </Link>
           <h1 className="text-2xl font-bold text-neutral-900">Tạo tài khoản</h1>
           <p className="mt-1 text-sm text-neutral-500">Miễn phí, không cần thẻ tín dụng</p>
         </div>
@@ -156,6 +153,6 @@ export default function DangKyPage() {
         </p>
 
       </div>
-    </main>
+    </div>
   )
 }

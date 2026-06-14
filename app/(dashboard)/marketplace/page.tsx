@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link              from 'next/link'
 import { createClient }  from '@/lib/supabase/server'
+import { getActiveSubscription } from '@/features/billing/api/subscription.server'
 
 export const metadata: Metadata = {
   title: 'Thị trường — VIO AGRI',
@@ -328,6 +329,51 @@ const TIER_STYLES: Record<string, { cls: string; label: string }> = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function MarketplacePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const [{ count: listingCount }, subscription] = await Promise.all([
+    supabase.from('listings').select('*', { count: 'exact', head: true }).eq('owner_id', user.id),
+    getActiveSubscription(user.id),
+  ])
+
+  const isPro    = subscription?.plan_id === 'pro' && subscription?.status === 'active'
+  const isSeller = (listingCount ?? 0) > 0
+
+  if (!isSeller && !isPro) {
+    return (
+      <div className="flex flex-col items-center px-5 py-24 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+              stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <p className="m-0 text-[17px] font-bold text-gray-900">
+          Dành cho người bán
+        </p>
+        <p className="m-0 mt-2 max-w-[300px] text-[14px] leading-relaxed text-gray-500">
+          Xem dữ liệu thanh khoản thị trường khi bạn có ít nhất một tin đăng hoặc đang dùng gói Pro.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/dashboard/listings/new"
+            className="rounded-full bg-vio-forest px-5 py-2.5 text-[14px] font-bold text-white no-underline hover:opacity-90"
+          >
+            Đăng tin mới
+          </Link>
+          <Link
+            href="/goi-thanh-vien"
+            className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-[14px] font-semibold text-gray-600 no-underline hover:bg-gray-50"
+          >
+            Xem gói Pro
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   const s = await fetchMarketplaceStats()
 
   const totalListings = s.activeListings + s.draftCount

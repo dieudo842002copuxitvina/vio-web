@@ -126,6 +126,7 @@ export function LoginForm({ next, authError }: LoginFormProps) {
           Chưa có tài khoản?{' '}
           <Link
             href="/dang-ky"
+            prefetch={false}
             className="font-semibold text-vio-primary no-underline hover:underline"
           >
             Đăng ký miễn phí

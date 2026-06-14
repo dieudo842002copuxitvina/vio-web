@@ -57,13 +57,15 @@ function isDueSoon(isoDate: string | null): boolean {
 function KanbanCard({
   lead,
   onMove,
+  canSeeHotLeads = true,
 }: {
-  lead:   CrmLead
-  onMove: (id: string, stage: LeadStage) => void
+  lead:           CrmLead
+  onMove:         (id: string, stage: LeadStage) => void
+  canSeeHotLeads?: boolean
 }) {
   const dueSoon    = isDueSoon(lead.next_followup_at)
   const nextStages = NEXT_STAGES[lead.stage] ?? []
-  const pDot       = PRIORITY_DOT[lead.priority]
+  const pDot       = canSeeHotLeads ? PRIORITY_DOT[lead.priority] : undefined
 
   return (
     <div className={[
@@ -163,12 +165,14 @@ function KanbanColumn({
   totalCount,
   hasMore,
   onMove,
+  canSeeHotLeads = true,
 }: {
-  stage:      LeadStage
-  leads:      CrmLead[]
-  totalCount: number
-  hasMore:    boolean
-  onMove:     (id: string, stage: LeadStage) => void
+  stage:           LeadStage
+  leads:           CrmLead[]
+  totalCount:      number
+  hasMore:         boolean
+  onMove:          (id: string, stage: LeadStage) => void
+  canSeeHotLeads?: boolean
 }) {
   const meta    = STAGE_META[stage]
   const overrun = hasMore ? totalCount - leads.length : 0
@@ -201,7 +205,7 @@ function KanbanColumn({
           </div>
         ) : (
           leads.map(lead => (
-            <KanbanCard key={lead.id} lead={lead} onMove={onMove} />
+            <KanbanCard key={lead.id} lead={lead} onMove={onMove} canSeeHotLeads={canSeeHotLeads} />
           ))
         )}
 
@@ -227,11 +231,12 @@ export interface KanbanColumnData {
 }
 
 interface Props {
-  columns:     KanbanColumnData[]
-  stageCounts: Record<LeadStage, number>
+  columns:         KanbanColumnData[]
+  stageCounts:     Record<LeadStage, number>
+  canSeeHotLeads?: boolean
 }
 
-export function KanbanBoard({ columns, stageCounts }: Props) {
+export function KanbanBoard({ columns, stageCounts, canSeeHotLeads = true }: Props) {
   const [, startTransition] = useTransition()
 
   const [optimisticCols, addOptimistic] = useOptimistic(
@@ -303,6 +308,7 @@ export function KanbanBoard({ columns, stageCounts }: Props) {
               totalCount={stageCounts[col.stage] ?? 0}
               hasMore={col.hasMore}
               onMove={moveCard}
+              canSeeHotLeads={canSeeHotLeads}
             />
           ))}
         </div>

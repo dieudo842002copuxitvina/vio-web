@@ -5,6 +5,8 @@ import {
   getActiveSubscription,
 }                         from '@/features/billing/api/subscription.server'
 import { PLAN_DISPLAY }   from '@/features/billing/types'
+import { CancelSubscriptionButton } from './_components/CancelSubscriptionButton'
+import { BoostCheckoutButton }      from '@/app/(dashboard)/xuc-tien-tin-dang/_components/BoostCheckoutButton'
 
 export const metadata: Metadata = { title: 'Gói thành viên — VIO AGRI' }
 export const revalidate = 0
@@ -110,12 +112,7 @@ function ProCard({ periodEnd, periodStart }: { periodEnd: string | null; periodS
           >
             Quản lý gói
           </Link>
-          <Link
-            href="/lien-he?subject=cancel-subscription"
-            className="text-[12px] text-gray-400 no-underline hover:text-gray-600 hover:underline"
-          >
-            Hủy đăng ký
-          </Link>
+          <CancelSubscriptionButton />
         </div>
       </div>
     </div>
@@ -170,15 +167,13 @@ function FreeUpgradeCard() {
 
         {/* CTA */}
         <div className="mt-6 bg-black/30 px-6 py-5">
-          <p className="m-0 mb-3 text-[12px] text-white/50">
-            Tích hợp thanh toán đang chuẩn bị. Liên hệ admin để kích hoạt ngay.
-          </p>
-          <Link
-            href="/lien-he?subject=upgrade-pro"
-            className="flex items-center justify-center rounded-full bg-white py-3 text-[14px] font-bold text-gray-900 no-underline transition-opacity hover:opacity-90"
-          >
-            Liên hệ nâng cấp Pro
-          </Link>
+          <BoostCheckoutButton
+            productType="pro_monthly"
+            label={`Nâng cấp Pro — ${fmtPrice(pro.priceVnd)}/tháng`}
+            className="flex w-full cursor-pointer items-center justify-center rounded-full bg-white
+                       py-3 text-[14px] font-bold text-gray-900 transition-opacity
+                       hover:opacity-90 disabled:opacity-50"
+          />
         </div>
       </div>
 

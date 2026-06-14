@@ -266,6 +266,30 @@ export default async function XucTienTinDangPage() {
         </div>
       )}
 
+      {/* ── No listings notice ─────────────────────────────────── */}
+      {activeCount === 0 && (
+        <div className="mb-8 flex flex-col items-center rounded-3xl border border-dashed border-gray-200 bg-white py-12 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+              <rect x="3" y="3" width="18" height="18" rx="2.5" stroke="currentColor" strokeWidth="1.75"/>
+              <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <p className="m-0 text-[15px] font-semibold text-gray-700">
+            Chưa có tin đăng nào
+          </p>
+          <p className="m-0 mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-gray-400">
+            Bạn cần có ít nhất một tin đăng đang hoạt động để sử dụng Promote Center.
+          </p>
+          <Link
+            href="/dashboard/listings/new"
+            className="mt-5 rounded-full bg-vio-forest px-5 py-2.5 text-[14px] font-bold text-white no-underline hover:opacity-90"
+          >
+            Đăng tin mới
+          </Link>
+        </div>
+      )}
+
       {/* ── Tier grid ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {PROMOTE_TIERS.map(tier => (

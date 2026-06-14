@@ -818,6 +818,11 @@ export default async function PhanTichPage() {
     return hotDiff !== 0 ? hotDiff : b.views7d - a.views7d
   })
 
+  // Free users see zeroed hot lead counts (gate the signal, not the card)
+  const insightsForDisplay = canSeeHotLeads
+    ? sorted
+    : sorted.map(i => ({ ...i, hotLeadCount: 0, veryHotLeadCount: 0 }))
+
   return (
     <div className="p-6 md:p-10">
 
@@ -858,7 +863,7 @@ export default async function PhanTichPage() {
       )}
 
       {/* ── Summary bar ── */}
-      {sorted.length > 0 && <SummaryBar insights={canSeeHotLeads ? sorted : sorted} />}
+      {sorted.length > 0 && <SummaryBar insights={insightsForDisplay} />}
 
       {/* ── Empty state ── */}
       {sorted.length === 0 && (
@@ -881,7 +886,7 @@ export default async function PhanTichPage() {
 
       {/* ── Insight cards ── */}
       <div className="space-y-4">
-        {sorted.map(i => (
+        {insightsForDisplay.map(i => (
           <InsightCard
             key={i.listingId}
             insight={i}

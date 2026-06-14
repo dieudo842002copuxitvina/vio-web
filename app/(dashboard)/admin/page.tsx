@@ -220,6 +220,12 @@ export default async function AdminPage() {
           description="Toàn bộ hành động của admin theo thời gian"
           accent="blue"
         />
+        <NavCard
+          href="/admin/blogs"
+          title="Quản lý Blog"
+          description="Tạo, chỉnh sửa và xuất bản bài viết tin tức"
+          accent="green"
+        />
       </div>
 
       {/* ── Marketplace OS ── */}

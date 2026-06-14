@@ -7,7 +7,7 @@ const COLUMNS = [
     heading: 'Nền tảng',
     links: [
       { label: 'Khám phá đất',    href: '/dat-nong-nghiep'          },
-      { label: 'Tỉnh thành',      href: '/tinh'                      },
+      { label: 'Tỉnh thành',      href: '/dat-nong-nghiep'            },
       { label: 'Bản đồ',          href: '/ban-do'                    },
       { label: 'Doanh nghiệp',    href: '/doanh-nghiep'              },
       { label: 'Membership',      href: '/membership'                },
@@ -17,12 +17,12 @@ const COLUMNS = [
   {
     heading: 'Tỉnh thành',
     links: [
-      { label: 'Lâm Đồng',   href: '/tinh/lam-dong'    },
-      { label: 'Đắk Lắk',   href: '/tinh/dak-lak'     },
-      { label: 'Gia Lai',    href: '/tinh/gia-lai'     },
-      { label: 'Đồng Nai',  href: '/tinh/dong-nai'    },
-      { label: 'Bình Phước', href: '/tinh/binh-phuoc'  },
-      { label: 'An Giang',   href: '/tinh/an-giang'    },
+      { label: 'Lâm Đồng',   href: '/dat-nong-nghiep/lam-dong'    },
+      { label: 'Đắk Lắk',   href: '/dat-nong-nghiep/dak-lak'     },
+      { label: 'Gia Lai',    href: '/dat-nong-nghiep/gia-lai'     },
+      { label: 'Đồng Nai',  href: '/dat-nong-nghiep/dong-nai'    },
+      { label: 'Bình Phước', href: '/dat-nong-nghiep/binh-phuoc'  },
+      { label: 'An Giang',   href: '/dat-nong-nghiep/an-giang'    },
     ],
   },
   {
