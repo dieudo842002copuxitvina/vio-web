@@ -1,5 +1,3 @@
-'use server'
-
 // ── Marketplace analytics — fire-and-forget tracking helpers ─────────────────
 //
 // These functions insert rows into public.search_queries.  Like the signal

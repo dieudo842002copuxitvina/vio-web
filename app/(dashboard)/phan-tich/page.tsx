@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import Link              from 'next/link'
 import { createClient }  from '@/lib/supabase/server'
 import { getMerchantInsights } from '@/features/merchant/api/merchant-insights.server'
+import { getMerchantMetrics }  from '@/features/merchant/api/merchant.server'
 import { getSubscriptionFeatures } from '@/features/billing/api/subscription.server'
-import type { ListingInsight } from '@/features/merchant/api/merchant-insights.server'
+import type { ListingInsight }    from '@/features/merchant/api/merchant-insights.server'
+import type { MerchantMetrics }   from '@/features/merchant/api/merchant.server'
 
 export const metadata: Metadata = { title: 'Phân tích Listing' }
 export const revalidate = 0
@@ -22,6 +24,53 @@ function fmtPct(v: number): string {
 
 function fmtRank(n: number | null): string {
   return n != null ? `#${n}` : '—'
+}
+
+// ── Merchant-wide KPI bar ─────────────────────────────────────────────────────
+
+function KpiTile({
+  label, value, accent, highlight,
+}: {
+  label:      string
+  value:      string
+  accent?:    boolean
+  highlight?: boolean
+}) {
+  return (
+    <div className={[
+      'flex flex-col gap-1.5 rounded-2xl border px-4 py-3',
+      highlight
+        ? 'border-[#0071E3]/20 bg-[#0071E3]/5 dark:border-[#409CFF]/20 dark:bg-[#409CFF]/10'
+      : accent
+        ? 'border-[#34C759]/20 bg-[#34C759]/5 dark:border-[#30D158]/20 dark:bg-[#30D158]/10'
+      : 'border-gray-100 bg-white shadow-[0_1px_4px_rgb(0,0,0,0.04)] dark:border-white/[0.06] dark:bg-[#1C1C1E]',
+    ].join(' ')}>
+      <span className="text-[0.625rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+        {label}
+      </span>
+      <span className={[
+        'text-2xl font-bold tabular-nums leading-none',
+        highlight ? 'text-[#0071E3] dark:text-[#409CFF]'
+        : accent  ? 'text-[#34C759] dark:text-[#30D158]'
+        : 'text-gray-900 dark:text-white',
+      ].join(' ')}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function MerchantKpiBar({ m }: { m: MerchantMetrics }) {
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <KpiTile label="Hiển thị 7d"  value={fmtNum(m.impressions_7d)} />
+      <KpiTile label="Click 7d"     value={fmtNum(m.clicks_7d)} />
+      <KpiTile label="CTR"          value={fmtPct(m.ctr_7d)}        accent />
+      <KpiTile label="Liên hệ 7d"  value={String(m.inquiries_7d)}   highlight />
+      <KpiTile label="Pipeline"     value={String(m.leads_active)} />
+      <KpiTile label="Chốt 30d"    value={String(m.leads_won_30d)}  accent />
+    </div>
+  )
 }
 
 // ── Atoms ─────────────────────────────────────────────────────────────────────
@@ -109,9 +158,118 @@ function LeadPill({
   )
 }
 
+// ── Completeness hints ───────────────────────────────────────────────────────
+
+interface CompletenessData {
+  hasCover:        boolean
+  hasPrice:        boolean
+  hasDescription:  boolean
+  hasPhone:        boolean
+  hasLocation:     boolean
+  hasLandType:     boolean
+}
+
+interface ImprovementTip {
+  label: string
+  href:  string
+  gain:  string
+}
+
+function buildTips(c: CompletenessData, listingId: string): ImprovementTip[] {
+  const tips: ImprovementTip[] = []
+  const edit = `/tin-dang-cua-toi/chinh-sua/${listingId}`
+
+  if (!c.hasCover)
+    tips.push({ label: 'Thêm ảnh', href: edit, gain: '+3x lượt xem' })
+  if (!c.hasPrice)
+    tips.push({ label: 'Thêm giá', href: edit, gain: '+2x liên hệ' })
+  if (!c.hasDescription)
+    tips.push({ label: 'Viết mô tả ≥200 chữ', href: edit, gain: '+60% lưu' })
+  if (!c.hasLandType)
+    tips.push({ label: 'Chọn loại đất', href: edit, gain: '+40% CTR' })
+  if (!c.hasPhone)
+    tips.push({ label: 'Thêm số điện thoại', href: edit, gain: 'Tăng tin cậy' })
+  if (!c.hasLocation)
+    tips.push({ label: 'Thêm địa chỉ', href: edit, gain: '+SEO' })
+
+  return tips.slice(0, 3) // show top 3 actionable tips only
+}
+
+function CompletenessHints({
+  completeness,
+  listingId,
+}: {
+  completeness: CompletenessData
+  listingId:    string
+}) {
+  const tips = buildTips(completeness, listingId)
+  if (tips.length === 0) return null
+
+  const filled = Object.values(completeness).filter(Boolean).length
+  const total  = Object.values(completeness).length
+  const pct    = Math.round((filled / total) * 100)
+
+  return (
+    <>
+      <div className="mx-5 h-px bg-gray-100 dark:bg-white/[0.06]" />
+      <div className="px-5 py-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="m-0 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+            Cải thiện tin đăng
+          </p>
+          <span className={[
+            'text-xs font-semibold tabular-nums',
+            pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500',
+          ].join(' ')}>
+            {pct}% hoàn chỉnh
+          </span>
+        </div>
+        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.08]">
+          <div
+            className={[
+              'h-full rounded-full transition-all',
+              pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400',
+            ].join(' ')}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {tips.map(tip => (
+            <Link
+              key={tip.label}
+              href={tip.href}
+              className="flex items-center gap-1.5 rounded-full border border-dashed
+                         border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold
+                         text-amber-700 no-underline transition-colors
+                         hover:border-amber-400 hover:bg-amber-100
+                         dark:border-amber-500/30 dark:bg-amber-900/10 dark:text-amber-400"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5"
+                      strokeLinecap="round"/>
+              </svg>
+              {tip.label}
+              <span className="rounded-full bg-amber-200/60 px-1.5 py-0.5 text-[0.65rem]
+                               dark:bg-amber-900/30">
+                {tip.gain}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── Insight Card ─────────────────────────────────────────────────────────────
 
-function InsightCard({ insight: i }: { insight: ListingInsight }) {
+function InsightCard({
+  insight: i,
+  completeness,
+}: {
+  insight:      ListingInsight
+  completeness: CompletenessData | null
+}) {
   const hasLeads   = i.leadCount > 0
   const hasRanking = i.trendingRank != null || i.provinceRank != null || i.categoryRank != null
 
@@ -211,6 +369,11 @@ function InsightCard({ insight: i }: { insight: ListingInsight }) {
         </>
       )}
 
+      {/* ── Listing completeness / improvement tips ── */}
+      {completeness && (
+        <CompletenessHints completeness={completeness} listingId={i.listingId} />
+      )}
+
     </article>
   )
 }
@@ -263,10 +426,34 @@ export default async function PhanTichPage() {
     )
   }
 
-  const [insights, features] = await Promise.all([
+  const [insights, features, metrics, completenessRows] = await Promise.all([
     getMerchantInsights(user.id),
     getSubscriptionFeatures(user.id),
+    getMerchantMetrics(user.id),
+    supabase
+      .from('listings')
+      .select('id, price_text, description, contact_phone, location_text, land_type, cover_url')
+      .eq('owner_id', user.id)
+      .eq('status', 'published'),
   ])
+
+  // Build completeness map: listingId → CompletenessData
+  type CompRow = {
+    id: string; price_text: string | null; description: string | null
+    contact_phone: string | null; location_text: string | null
+    land_type: string | null; cover_url: string | null
+  }
+  const completenessMap = new Map<string, CompletenessData>()
+  for (const row of ((completenessRows.data ?? []) as CompRow[])) {
+    completenessMap.set(row.id, {
+      hasCover:       !!row.cover_url,
+      hasPrice:       !!row.price_text,
+      hasDescription: (row.description?.length ?? 0) >= 200,
+      hasPhone:       !!row.contact_phone,
+      hasLocation:    !!row.location_text,
+      hasLandType:    !!row.land_type,
+    })
+  }
 
   const canSeeHotLeads = features.hotLeads
 
@@ -295,6 +482,9 @@ export default async function PhanTichPage() {
           </span>
         )}
       </div>
+
+      {/* ── Merchant-wide KPI bar ── */}
+      {metrics && <MerchantKpiBar m={metrics} />}
 
       {/* ── Pro upgrade nudge (FREE only) ── */}
       {!canSeeHotLeads && sorted.length > 0 && (
@@ -337,7 +527,11 @@ export default async function PhanTichPage() {
       {/* ── Insight cards ── */}
       <div className="space-y-4">
         {sorted.map(i => (
-          <InsightCard key={i.listingId} insight={i} />
+          <InsightCard
+            key={i.listingId}
+            insight={i}
+            completeness={completenessMap.get(i.listingId) ?? null}
+          />
         ))}
       </div>
 

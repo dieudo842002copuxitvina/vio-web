@@ -1,5 +1,3 @@
-'use server'
-
 import { unstable_cache }     from 'next/cache'
 import { createCachedClient } from '@/lib/supabase/server'
 import { listingToLandCard }  from '@/entities/listing'

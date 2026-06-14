@@ -10,8 +10,8 @@
 //   Wholesale requests           — 5 min (changes when users post requests)
 //   Logistics routes             — 30 min (stable trade patterns)
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { unstable_cache }    from 'next/cache'
+import { createClient, createCachedClient } from '@/lib/supabase/server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,7 +119,7 @@ export interface SupplyDensity {
 
 const _getTrendingRegions = unstable_cache(
   async (limit: number): Promise<TrendingRegion[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('regional_demand_signals')
       .select(
@@ -153,7 +153,7 @@ export function getTrendingRegions(limit = 10): Promise<TrendingRegion[]> {
 
 const _getUnderservedMarkets = unstable_cache(
   async (limit: number): Promise<UnderservedMarket[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('market_gap_scores')
       .select(
@@ -183,7 +183,7 @@ export function getUnderservedMarkets(limit = 10): Promise<UnderservedMarket[]> 
 
 const _getMarketGapsByProvince = unstable_cache(
   async (provinceId: number, limit: number): Promise<MarketGap[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('market_gap_scores')
       .select('province_id, category_id, gap_score, opportunity_score, gap_tier')
@@ -215,7 +215,7 @@ export function getMarketGapsByProvince(provinceId: number, limit = 10): Promise
 
 const _getRelatedMerchants = unstable_cache(
   async (merchantId: string, limit: number): Promise<RelatedMerchant[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('merchant_similarity')
       .select(
@@ -261,7 +261,7 @@ export function getRelatedMerchants(merchantId: string, limit = 6): Promise<Rela
 
 const _getMerchantRelationships = unstable_cache(
   async (merchantId: string, limit: number): Promise<MerchantRelationship[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('merchant_relationships')
       .select(
@@ -314,7 +314,7 @@ interface WholesaleOptions {
 
 const _getWholesaleOpportunities = unstable_cache(
   async (categoryId: number | null, provinceId: number | null, limit: number): Promise<WholesaleRequest[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
       .from('wholesale_requests')
@@ -417,7 +417,7 @@ export async function getBuyerInterests(
 
 const _getLogisticsRoutes = unstable_cache(
   async (provinceId: number): Promise<LogisticsRoute[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('logistics_routes')
       .select(
@@ -448,7 +448,7 @@ export function getLogisticsRoutes(provinceId: number): Promise<LogisticsRoute[]
 
 const _getSupplyDensityByProvince = unstable_cache(
   async (provinceId: number, limit: number): Promise<SupplyDensity[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('regional_supply_density')
       .select(

@@ -6,25 +6,38 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       disallow: [
-        // Dashboard + seller pages
+        // ── Seller dashboard & listing management ─────────────────────────
         '/dashboard',
         '/dang-tin',
-        '/ho-so',
+        '/dang-tin-dat',
+        '/tin-dang-cua-toi',
         '/quan-ly',
+        '/quan-ly-leads',
+        '/quan-ly-lich-hen',
+        '/phan-tich',
         '/admin',
 
-        // Auth flows
+        // ── User-private pages (route group app/(dashboard)/) ─────────────
+        '/tin-da-luu',
+        '/tim-kiem-da-luu',
+        '/ho-so-ca-nhan',
+        '/nang-cap',
+
+        // ── Auth flows ────────────────────────────────────────────────────
         '/auth',
         '/login',
         '/dang-nhap',
         '/register',
         '/dang-ky',
 
-        // API + internals
+        // ── Legacy profile route ──────────────────────────────────────────
+        '/ho-so',
+
+        // ── API + internals ───────────────────────────────────────────────
         '/api',
         '/_next',
 
-        // Generic private namespace
+        // ── Generic private namespace ─────────────────────────────────────
         '/private',
         '/settings',
       ],

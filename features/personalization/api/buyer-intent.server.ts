@@ -1,5 +1,3 @@
-'use server'
-
 // ── Buyer Intent Engine ───────────────────────────────────────────────────────
 //
 // Classifies authenticated users by purchase intent using behavioral signals.
@@ -40,8 +38,7 @@
 //   detectBuyerIntent(profileId)  — 2 queries, cached 5 min
 //   detectAllBuyerIntents()       — 2 queries (batch), cached 5 min
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import type { BuyerIntent, IntentLevel, BuyerIntentSignals } from '../types'
 
 // ── Internal scoring ──────────────────────────────────────────────────────────
@@ -158,8 +155,7 @@ function applyRules(
 // ── detectBuyerIntent — single profile ───────────────────────────────────────
 // 2 queries (events + listing context). Cached 5 min per profileId.
 
-const _cachedBuyerIntent = unstable_cache(
-  async (profileId: string): Promise<BuyerIntent | null> => {
+async function _detectIntent(profileId: string): Promise<BuyerIntent | null> {
     const supabase = await createClient()
     const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
@@ -195,16 +191,13 @@ const _cachedBuyerIntent = unstable_cache(
       applyRules(events as EventRow[], listingContext)
 
     return { profileId, intentLevel, favoriteCategory, favoriteProvince, lastDetectedAt }
-  },
-  ['personalization', 'buyer-intent', 'profile'],
-  { revalidate: 300, tags: ['personalization', 'listings'] },
-)
+}
 
 export async function detectBuyerIntent(
   profileId: string,
 ): Promise<BuyerIntent | null> {
   try {
-    return await _cachedBuyerIntent(profileId)
+    return await _detectIntent(profileId)
   } catch (err) {
     console.error('[detectBuyerIntent]', (err as Error).message)
     return null
@@ -217,8 +210,7 @@ export async function detectBuyerIntent(
 //   Query 1 — listing_events (all profiles, last 30 days, ≤50 000 rows)
 //   Query 2 — listings context (all unique listing IDs touched, one IN query)
 
-const _cachedAllBuyerIntents = unstable_cache(
-  async (limit: number): Promise<BuyerIntent[]> => {
+async function _detectAllIntents(limit: number): Promise<BuyerIntent[]> {
     const supabase = await createClient()
     const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
@@ -283,14 +275,11 @@ const _cachedAllBuyerIntents = unstable_cache(
     })
 
     return results.slice(0, limit)
-  },
-  ['personalization', 'buyer-intent', 'all'],
-  { revalidate: 300, tags: ['personalization', 'listings'] },
-)
+}
 
 export async function detectAllBuyerIntents(limit = 500): Promise<BuyerIntent[]> {
   try {
-    return await _cachedAllBuyerIntents(limit)
+    return await _detectAllIntents(limit)
   } catch (err) {
     console.error('[detectAllBuyerIntents]', (err as Error).message)
     return []

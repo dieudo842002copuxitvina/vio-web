@@ -1,22 +1,44 @@
 // ── DB row → UI prop adapters ──────────────────────────────────────────────────
 // All adapters now target the universal 'listings' table.
-// The old LandListing → UniversalListing adapter has been removed; use
-// listingToLandCard() to map a Listing row to LandListingCardProps.
 
 import type { Listing, UniversalListing, ListingBadge, LandType } from '../model/types'
 import { LISTING_TYPE_ROUTES, LAND_TYPE_LABELS }                   from '../model/types'
 import { formatLocation }                                           from './formatters'
+import type { LandCardProps }                                       from '../ui/LandCard'
 
-// ── Listing → LandListingCardProps ────────────────────────────────────────────
-// Maps a universal Listing row to the props shape that LandListingCard expects.
-// Pass optional resolved attribute values when available (e.g. from getListingDetail).
+// ── Listing → LandCardProps ───────────────────────────────────────────────────
+// Maps a universal Listing row to the props shape that LandCard expects.
+// Pass optional resolved attribute values when available.
 
 export interface LandCardOverrides {
   land_area_text?: string | null
   land_type_label?: string | null
   legal_status?: string | null
+  proLocked?: boolean
 }
 
+// toLandCard — maps a Listing row to the new LandCard component props.
+// Includes `id` field. Use this with the new <LandCard> component.
+export function toLandCard(l: Listing, overrides: LandCardOverrides = {}): LandCardProps {
+  return {
+    id:           l.id,
+    slug:         l.slug,
+    title:        l.title,
+    imageUrl:     l.cover_url,
+    locationText: l.location_text,
+    price:        l.price_text,
+    priceType:    l.price_type,
+    area:         overrides.land_area_text ?? null,
+    landType:     overrides.land_type_label ?? null,
+    legalStatus:  overrides.legal_status ?? null,
+    isFeatured:   l.is_featured,
+    isVerified:   l.is_verified,
+    proLocked:    overrides.proLocked ?? false,
+  }
+}
+
+// listingToLandCard — legacy adapter for LandListingCard (old shape, no `id`).
+// Existing callers do: { id: l.id, ...listingToLandCard(l) } — keep that pattern.
 export function listingToLandCard(l: Listing, overrides: LandCardOverrides = {}) {
   return {
     slug:             l.slug,

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface StorefrontDetail {
   id:              string
+  merchant_id:     string
   slug:            string
   business_name:   string
   description:     string | null
@@ -17,6 +18,14 @@ export interface StorefrontDetail {
   ward_id:         number | null
 }
 
+export interface StorefrontTrust {
+  trust_score:        number
+  identity_verified:  boolean
+  active_listings:    number
+  avg_response_hours: number
+  response_rate:      number
+}
+
 export interface GeoRef    { id: number; name: string; name_full: string; slug: string }
 export interface ProductRef { id: string; slug: string; title: string; price_text: string | null; is_featured: boolean }
 export interface ServiceRef { id: string; slug: string; title: string; service_area_text: string | null; price_text: string | null }
@@ -25,6 +34,7 @@ export interface ReviewRef  { id: string; rating: number; comment: string | null
 
 export interface StorefrontDetailResult {
   storefront:     StorefrontDetail
+  trust:          StorefrontTrust | null
   province:       GeoRef | null
   district:       GeoRef | null
   ward:           GeoRef | null
@@ -36,7 +46,7 @@ export interface StorefrontDetailResult {
   average_rating: number | null
 }
 
-const SF_COLS  = 'id, slug, business_name, description, phone, zalo_url, facebook_url, tiktok_url, avatar_url, cover_image_url, is_verified, province_id, district_id, ward_id'
+const SF_COLS  = 'id, merchant_id, slug, business_name, description, phone, zalo_url, facebook_url, tiktok_url, avatar_url, cover_image_url, is_verified, province_id, district_id, ward_id'
 const GEO_COLS = 'id, name, name_full, slug'
 
 export async function getStorefrontDetail(
@@ -55,7 +65,7 @@ export async function getStorefrontDetail(
 
   const sf = raw as StorefrontDetail
 
-  const [provRes, distRes, wardRes, prodRes, svcRes, nearbyRes, reviewRes] = await Promise.all([
+  const [provRes, distRes, wardRes, prodRes, svcRes, nearbyRes, reviewRes, trustRes] = await Promise.all([
     sf.province_id
       ? supabase.from('provinces').select(GEO_COLS).eq('id', sf.province_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -71,7 +81,7 @@ export async function getStorefrontDetail(
     supabase
       .from('listings')
       .select('id, slug, title, price_text, is_featured')
-      .eq('type', 'product')
+      .eq('listing_type', 'product')
       .eq('storefront_id', sf.id)
       .eq('is_public', true)
       .eq('status', 'published')
@@ -82,7 +92,7 @@ export async function getStorefrontDetail(
     supabase
       .from('listings')
       .select('id, slug, title, location_text, price_text')
-      .eq('type', 'service')
+      .eq('listing_type', 'service')
       .eq('storefront_id', sf.id)
       .eq('is_public', true)
       .eq('status', 'published')
@@ -105,6 +115,12 @@ export async function getStorefrontDetail(
       .eq('storefront_id', sf.id)
       .order('created_at', { ascending: false })
       .limit(20),
+
+    supabase
+      .from('merchant_trust_scores')
+      .select('trust_score, identity_verified, active_listings, avg_response_hours, response_rate')
+      .eq('profile_id', sf.merchant_id)
+      .maybeSingle(),
   ])
 
   if (provRes.error)   throw provRes.error
@@ -113,6 +129,7 @@ export async function getStorefrontDetail(
   if (prodRes.error)   throw prodRes.error
   if (svcRes.error)    throw svcRes.error
   if (nearbyRes.error) throw nearbyRes.error
+  if (trustRes.error)  throw trustRes.error
 
   const reviews     = (reviewRes.data as ReviewRef[]) ?? []
   const total       = reviews.reduce((sum, r) => sum + r.rating, 0)
@@ -120,6 +137,7 @@ export async function getStorefrontDetail(
 
   return {
     storefront:     sf,
+    trust:          (trustRes.data as StorefrontTrust | null) ?? null,
     province:       (provRes.data as GeoRef | null) ?? null,
     district:       (distRes.data as GeoRef | null) ?? null,
     ward:           (wardRes.data as GeoRef | null) ?? null,

@@ -1,5 +1,3 @@
-'use server'
-
 // ── Merchant dashboard server helpers ─────────────────────────────────────────
 //
 // All functions are SSR-safe, RLS-enforced, and cursor-paginated.
@@ -10,8 +8,7 @@
 //   getNotifications   — revalidate=0 (realtime-ish inbox)
 //   getListingPerformances — 5 min (pre-aggregated by cron)
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -121,24 +118,19 @@ export interface NotificationCursor {
 // Cache: 5 min — safe because the cron job refreshes at :28/:58.
 // Returns null when no metrics row exists yet (new merchants).
 
-const _getMerchantMetrics = unstable_cache(
-  async (profileId: string): Promise<MerchantMetrics | null> => {
+export async function getMerchantMetrics(profileId: string): Promise<MerchantMetrics | null> {
+  try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('merchant_metrics')
       .select('*')
       .eq('profile_id', profileId)
       .single()
-
     if (error || !data) return null
     return data as MerchantMetrics
-  },
-  ['merchant', 'metrics'],
-  { revalidate: 300, tags: ['merchant_metrics'] },
-)
-
-export async function getMerchantMetrics(profileId: string): Promise<MerchantMetrics | null> {
-  return _getMerchantMetrics(profileId)
+  } catch {
+    return null
+  }
 }
 
 // ── getLeads ──────────────────────────────────────────────────────────────────
@@ -294,20 +286,13 @@ export async function getLeadEvents(leadId: string): Promise<CrmLeadEvent[]> {
 // Single query: listing_performance JOIN listings on owner_id.
 // Cache: 5 min.
 
-const _getListingPerformances = unstable_cache(
-  async (
-    profileId: string,
-    limit:     number,
-    cursor?:   string,  // listing_id cursor (UUID lexicographic order)
-  ): Promise<{ items: ListingPerformance[]; hasMore: boolean }> => {
+export async function getListingPerformances(
+  profileId: string,
+  limit = 20,
+): Promise<{ items: ListingPerformance[]; hasMore: boolean }> {
+  try {
     const supabase = await createClient()
 
-    // Join listing_performance to listings to enforce owner filter
-    // and fetch title/slug in one round-trip.
-    // PostgREST: from listing_performance, join listings via FK-less join
-    // → must use a SELECT with listings.owner_id filter.
-    // Since there's no FK, use an RPC or a self-join via listings.
-    // Simplest: query listings WHERE owner_id = profileId, then join performance.
     const { data: listingRows, error: listingErr } = await supabase
       .from('listings')
       .select('id, title, slug')
@@ -317,15 +302,12 @@ const _getListingPerformances = unstable_cache(
       .order('created_at', { ascending: false })
       .limit(limit + 1)
 
-    if (listingErr || !listingRows?.length) {
-      return { items: [], hasMore: false }
-    }
+    if (listingErr || !listingRows?.length) return { items: [], hasMore: false }
 
     const hasMore = listingRows.length > limit
     const page    = hasMore ? listingRows.slice(0, limit) : listingRows
     const ids     = page.map(l => (l as { id: string }).id)
 
-    // Batch fetch performance rows (IN query — 1 round-trip)
     const { data: perfRows } = await supabase
       .from('listing_performance')
       .select('*')
@@ -339,20 +321,20 @@ const _getListingPerformances = unstable_cache(
     const items: ListingPerformance[] = page.map((l: { id: string; title: string; slug: string }) => {
       const perf = perfMap.get(l.id)
       return {
-        listing_id:       l.id,
-        listing_title:    l.title,
-        listing_slug:     l.slug,
-        impressions_7d:   perf?.impressions_7d   ?? 0,
-        clicks_7d:        perf?.clicks_7d        ?? 0,
-        saves_7d:         perf?.saves_7d         ?? 0,
-        inquiries_7d:     perf?.inquiries_7d     ?? 0,
-        impressions_30d:  perf?.impressions_30d  ?? 0,
-        clicks_30d:       perf?.clicks_30d       ?? 0,
-        inquiries_30d:    perf?.inquiries_30d    ?? 0,
-        ctr_7d:           perf?.ctr_7d           ?? 0,
-        ctr_30d:          perf?.ctr_30d          ?? 0,
-        inquiry_rate_7d:  perf?.inquiry_rate_7d  ?? 0,
-        save_rate_7d:     perf?.save_rate_7d     ?? 0,
+        listing_id:        l.id,
+        listing_title:     l.title,
+        listing_slug:      l.slug,
+        impressions_7d:    perf?.impressions_7d    ?? 0,
+        clicks_7d:         perf?.clicks_7d         ?? 0,
+        saves_7d:          perf?.saves_7d          ?? 0,
+        inquiries_7d:      perf?.inquiries_7d      ?? 0,
+        impressions_30d:   perf?.impressions_30d   ?? 0,
+        clicks_30d:        perf?.clicks_30d        ?? 0,
+        inquiries_30d:     perf?.inquiries_30d     ?? 0,
+        ctr_7d:            perf?.ctr_7d            ?? 0,
+        ctr_30d:           perf?.ctr_30d           ?? 0,
+        inquiry_rate_7d:   perf?.inquiry_rate_7d   ?? 0,
+        save_rate_7d:      perf?.save_rate_7d      ?? 0,
         performance_score: perf?.performance_score ?? 0,
         performance_tier:  perf?.performance_tier  ?? 'new',
         updated_at:        perf?.updated_at        ?? new Date(0).toISOString(),
@@ -360,17 +342,9 @@ const _getListingPerformances = unstable_cache(
     })
 
     return { items, hasMore }
-  },
-  ['merchant', 'listing-performances'],
-  { revalidate: 300, tags: ['listing_performance', 'listings'] },
-)
-
-export async function getListingPerformances(
-  profileId: string,
-  limit = 20,
-  cursor?:   string,
-): Promise<{ items: ListingPerformance[]; hasMore: boolean }> {
-  return _getListingPerformances(profileId, limit, cursor)
+  } catch {
+    return { items: [], hasMore: false }
+  }
 }
 
 // ── getNotifications ──────────────────────────────────────────────────────────

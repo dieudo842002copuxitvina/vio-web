@@ -40,9 +40,10 @@ export interface ListingDetailResult {
   attrs:      Record<string, string | null>
 }
 
-// Explicit column list — excludes search_vector (tsvector, not useful to callers)
+// Explicit column list — excludes search_vector (tsvector, not useful to callers).
+// The DB column is `listing_type`; aliased to `type` so the Listing TS type is unchanged.
 const COLS = [
-  'id', 'type', 'slug', 'title', 'short_description', 'description',
+  'id', 'listing_type:type', 'slug', 'title', 'short_description', 'description',
   'cover_url', 'province_id', 'district_id', 'location_text',
   'price_amount', 'price_unit', 'price_text', 'price_type',
   'status', 'moderation_status', 'is_public', 'is_featured', 'is_verified',
@@ -97,7 +98,7 @@ export async function getListings(
     .order('published_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (type)        query = query.eq('type', type)
+  if (type)        query = query.eq('listing_type', type)
   if (province_id) query = query.eq('province_id', province_id)
   if (category_id) query = query.eq('category_id', category_id)
 
@@ -125,7 +126,7 @@ export async function getFeaturedListings(
     .order('published_at', { ascending: false })
     .limit(limit)
 
-  if (type) query = query.eq('type', type)
+  if (type) query = query.eq('listing_type', type)
 
   const { data, error } = await query
 
@@ -155,7 +156,7 @@ export async function getListingsByProvince(
     .order('published_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (type) query = query.eq('type', type)
+  if (type) query = query.eq('listing_type', type)
 
   const { data, count, error } = await query
 
@@ -184,7 +185,7 @@ export async function searchListings(
     .order('is_featured', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (type)        query = query.eq('type', type)
+  if (type)        query = query.eq('listing_type', type)
   if (province_id) query = query.eq('province_id', province_id)
 
   const { data, error } = await query
@@ -214,7 +215,7 @@ export async function getNearbyListings(
   function nearbyQ(q: any): any {
     return approved(q)
       .not('id', 'in', `(${[...excludeIds].join(',')})`)
-      .eq('type', type)
+      .eq('listing_type', type)
       .order('is_featured', { ascending: false })
   }
 

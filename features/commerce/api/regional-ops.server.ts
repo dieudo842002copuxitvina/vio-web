@@ -9,8 +9,8 @@
 //   Economic telemetry                                       — 30 min
 //   Trusted merchant feed                                    — 30 min
 
-import { unstable_cache } from 'next/cache'
-import { createClient }   from '@/lib/supabase/server'
+import { unstable_cache }    from 'next/cache'
+import { createCachedClient } from '@/lib/supabase/server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -176,7 +176,7 @@ export interface SupplyRoute {
 
 const _getHotMarkets = unstable_cache(
   async (limit: number): Promise<HotMarket[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('regional_market_heatmaps')
       .select(
@@ -208,7 +208,7 @@ export function getHotMarkets(limit = 10): Promise<HotMarket[]> {
 
 const _getShortageRegions = unstable_cache(
   async (limit: number): Promise<ShortageRegion[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('inventory_pressure_scores')
       .select(
@@ -240,7 +240,7 @@ export function getShortageRegions(limit = 10): Promise<ShortageRegion[]> {
 
 const _getHighLiquidityRegions = unstable_cache(
   async (limit: number): Promise<HighLiquidityRegion[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('regional_market_heatmaps')
       .select('province_id, category_id, liquidity_score, heat_index, heat_tier, demand_score, updated_at')
@@ -272,7 +272,7 @@ export function getHighLiquidityRegions(limit = 10): Promise<HighLiquidityRegion
 
 const _getTrustedMerchantFeed = unstable_cache(
   async (provinceId: number | null, limit: number): Promise<TrustedMerchant[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
 
     if (provinceId !== null) {
       const { data, error } = await supabase.rpc('get_trusted_merchants_by_province', {
@@ -330,7 +330,7 @@ const _getMarketEvents = unstable_cache(
     categoryId: number | null,
     limit:      number,
   ): Promise<MarketEvent[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
       .from('market_events')
@@ -368,7 +368,7 @@ export function getMarketEvents(opts: MarketEventOptions = {}): Promise<MarketEv
 
 const _getRegionalMarketSummary = unstable_cache(
   async (provinceId: number, limit: number): Promise<RegionalSummary[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('regional_market_summary')
       .select(`
@@ -406,7 +406,7 @@ export function getRegionalMarketSummary(provinceId: number, limit = 20): Promis
 
 const _getEconomicTelemetry = unstable_cache(
   async (provinceId: number, days: number): Promise<EconomicTelemetryRow[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('economic_telemetry')
@@ -441,7 +441,7 @@ export function getEconomicTelemetry(provinceId: number, days = 30): Promise<Eco
 
 const _getPriceBenchmarks = unstable_cache(
   async (provinceId: number, categoryId: number | null): Promise<PriceBenchmark[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
       .from('regional_price_benchmarks')
@@ -477,7 +477,7 @@ export function getPriceBenchmarks(provinceId: number, categoryId?: number): Pro
 
 const _getInventoryPressure = unstable_cache(
   async (provinceId: number, limit: number): Promise<InventoryPressure[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     const { data, error } = await supabase
       .from('inventory_pressure_scores')
       .select(
@@ -511,7 +511,7 @@ export function getInventoryPressure(provinceId: number, limit = 20): Promise<In
 
 const _getSupplyRoutes = unstable_cache(
   async (destinationProvinceId: number, categoryId: number | null): Promise<SupplyRoute[]> => {
-    const supabase = await createClient()
+    const supabase = createCachedClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
       .from('supply_routing_edges')

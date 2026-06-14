@@ -4,34 +4,34 @@ import { cn }         from './utils'
 // ── Variant & Size Maps ───────────────────────────────────────────────────────
 
 type Variant = 'primary' | 'secondary' | 'ghost'
-type Size    = 'sm' | 'default' | 'lg'
+type Size    = 'sm' | 'default' | 'lg' | 'pill'
 
 const VARIANT: Record<Variant, string> = {
   primary: [
     'bg-vio-primary text-white',
-    'hover:opacity-90',
+    'hover:bg-vio-forest-mid',
     'dark:bg-vio-primary-dark',
   ].join(' '),
 
   secondary: [
-    'bg-white text-gray-900',
-    'border border-gray-200',
-    'hover:bg-gray-50 active:bg-gray-100',
-    'dark:bg-[#1C1C1E] dark:text-white dark:border-white/[0.1]',
-    'dark:hover:bg-[#2C2C2E]',
+    'bg-[var(--surface)] text-[var(--sea-ink)]',
+    'border border-[var(--line)]',
+    'hover:bg-[var(--link-bg-hover)]',
+    'dark:hover:bg-[var(--sand)]',
   ].join(' '),
 
   ghost: [
-    'text-gray-700 bg-transparent',
-    'hover:bg-gray-100 active:bg-gray-200',
-    'dark:text-gray-300 dark:hover:bg-white/[0.06]',
+    'text-vio-blue bg-transparent',
+    'hover:bg-vio-blue/[0.08] active:bg-vio-blue/[0.12]',
+    'dark:text-[#409CFF]',
   ].join(' '),
 }
 
 const SIZE: Record<Size, string> = {
-  sm:      'h-9  min-h-[36px] px-3.5 text-sm    rounded-xl  gap-1.5',
+  sm:      'h-9  min-h-[36px] px-3.5 text-sm          rounded-xl  gap-1.5',
   default: 'h-11 min-h-[44px] px-4   text-[0.9375rem] rounded-xl  gap-2',
-  lg:      'h-14 min-h-[56px] px-6   text-base  rounded-2xl gap-2.5',
+  lg:      'h-14 min-h-[56px] px-6   text-base        rounded-2xl gap-2.5',
+  pill:    'h-12 min-h-[48px] px-7   text-[0.9375rem] rounded-full gap-2',
 }
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
@@ -64,6 +64,8 @@ export interface ButtonProps
   variant?:   Variant
   size?:      Size
   isLoading?: boolean
+  iconLeft?:  React.ReactNode
+  iconRight?: React.ReactNode
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -75,6 +77,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       children,
       className,
+      iconLeft,
+      iconRight,
       ...props
     },
     ref,
@@ -101,7 +105,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading && <Spinner size={size} />}
+        {!isLoading && iconLeft}
         {children}
+        {iconRight}
       </button>
     )
   },

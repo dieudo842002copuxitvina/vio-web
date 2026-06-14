@@ -24,7 +24,7 @@ const TABS = [
   },
   {
     href:  '/dat-nong-nghiep',
-    label: 'Khám phá',
+    label: 'Tìm đất',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
@@ -36,24 +36,32 @@ const TABS = [
     ),
   },
   {
-    href:  '/dang-tin',
-    label: 'Đăng tin',
+    href:  '/tin-da-luu',
+    label: 'Đã lưu',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect
-          x="3" y="3" width="18" height="18" rx="4"
-          stroke="currentColor" strokeWidth="1.75"
-        />
         <path
-          d="M12 8v8M8 12h8"
-          stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"
+          d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"
+          stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"
         />
       </svg>
     ),
   },
   {
-    href:  '/ca-nhan',
-    label: 'Cá nhân',
+    href:  '/quan-ly-leads',
+    label: 'Tin nhắn',
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+          stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    href:  '/ho-so',
+    label: 'Hồ sơ',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.75" />
