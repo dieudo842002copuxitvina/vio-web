@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient }                from '@/lib/supabase/client'
-import { LAND_TYPE_LABELS }            from '@/features/land-listings/types'
-import type { LandType }               from '@/features/land-listings/types'
+import { LAND_TYPE_LABELS }            from '@/entities/listing'
+import type { LandType }               from '@/entities/listing'
 import { Card, CardHeader, CardContent } from '@/shared/ui/card'
 import { Input }                       from '@/shared/ui/input'
 import { Button }                      from '@/shared/ui/button'
@@ -82,8 +82,9 @@ export default function DangTinPage() {
 
   useEffect(() => {
     const sb = createClient()
-    sb.from('land_categories')
+    sb.from('categories')
       .select('id, name, slug')
+      .contains('entity_types', ['land_listing'])
       .order('sort_order', { ascending: true })
       .then(({ data }: { data: Category[] | null }) => { if (data) setCategories(data) })
   }, [])
@@ -153,12 +154,12 @@ export default function DangTinPage() {
           const path = `${user.id}/${Date.now()}-${i}.${ext}`
 
           const { error: upErr } = await sb.storage
-            .from('land_images')
+            .from('listing-media')
             .upload(path, file, { cacheControl: '2592000', upsert: false })
 
           if (upErr) throw new Error(`Ảnh ${i + 1}: ${upErr.message}`)
 
-          const { data: { publicUrl } } = sb.storage.from('land_images').getPublicUrl(path)
+          const { data: { publicUrl } } = sb.storage.from('listing-media').getPublicUrl(path)
           publicUrls.push(publicUrl)
           setUploadProg({ done: i + 1, total: images.length })
         }
@@ -171,32 +172,19 @@ export default function DangTinPage() {
       const areaNum  = form.area  ? Number(form.area)  : null
       const cropsArr = form.crops.split(',').map(s => s.trim()).filter(Boolean)
 
-      // Agricultural attributes packaged as JSONB — stored in the attributes column
-      // alongside individual indexed columns for query efficiency.
-      const attributes = {
-        ...(form.soilType.trim()    && { soil_type:     form.soilType.trim() }),
-        ...(form.waterSource.trim() && { water_source:  form.waterSource.trim() }),
-        ...(cropsArr.length > 0     && { current_crops: cropsArr }),
-      }
-
       const { data: listing, error: insErr } = await sb
-        .from('land_listings')
+        .from('listings')
         .insert({
+          type:              'land',
           owner_id:          user.id,
           slug:              slugify(form.title),
           title:             form.title.trim(),
           description:       form.description.trim() || null,
           price_text:        priceNum ? formatPriceText(priceNum) : null,
-          land_area_text:    areaNum  ? `${areaNum.toLocaleString('vi-VN')} m²` : null,
-          land_type:         form.landType     || null,
-          legal_status_text: form.legalStatus.trim()  || null,
-          crop_type:         cropsArr[0]       ?? null,
-          current_crops:     cropsArr.length > 0 ? cropsArr : null,
-          soil_type:         form.soilType.trim()     || null,
-          water_source:      form.waterSource.trim()  || null,
-          phone:             form.phone.trim()         || null,
-          category_id:       form.categoryId           || null,
-          attributes:        Object.keys(attributes).length > 0 ? attributes : null,
+          cover_url:         publicUrls[0] ?? null,
+          contact_phone:     form.phone.trim() || null,
+          category_id:       form.categoryId  || null,
+          status:            'draft',
           moderation_status: 'pending',
           is_public:         false,
           is_featured:       false,
@@ -206,12 +194,24 @@ export default function DangTinPage() {
 
       if (insErr) throw new Error(insErr.message)
 
-      // ── Phase 3: Insert image records ──────────────────────────────────────
+      // ── Phase 3: Insert attribute values ───────────────────────────────────
+      const attrRows = [
+        areaNum                    ? { listing_id: listing.id, key: 'area_m2',       value_number: areaNum, value_text: `${areaNum.toLocaleString('vi-VN')} m²` } : null,
+        form.landType.trim()       ? { listing_id: listing.id, key: 'land_type',     value_text: form.landType.trim() }       : null,
+        form.legalStatus.trim()    ? { listing_id: listing.id, key: 'legal_status',  value_text: form.legalStatus.trim() }    : null,
+        form.soilType.trim()       ? { listing_id: listing.id, key: 'soil_type',     value_text: form.soilType.trim() }       : null,
+        form.waterSource.trim()    ? { listing_id: listing.id, key: 'water_source',  value_text: form.waterSource.trim() }    : null,
+        cropsArr.length            ? { listing_id: listing.id, key: 'current_crops', value_json: cropsArr }                   : null,
+      ].filter(Boolean)
+      if (attrRows.length) await sb.from('listing_attribute_values').insert(attrRows)
+
+      // ── Phase 4: Insert media records ──────────────────────────────────────
       if (publicUrls.length > 0) {
-        await sb.from('land_listing_images').insert(
-          publicUrls.map((image_url, sort_order) => ({
-            land_listing_id: listing.id,
-            image_url,
+        await sb.from('listing_media').insert(
+          publicUrls.map((url, sort_order) => ({
+            listing_id: listing.id,
+            url,
+            type:       'image',
             sort_order,
           }))
         )

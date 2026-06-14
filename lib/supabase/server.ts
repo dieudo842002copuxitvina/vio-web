@@ -31,6 +31,23 @@ export async function createClient() {
 }
 
 /**
+ * Stateless anon client — safe inside unstable_cache().
+ *
+ * createClient() reads cookies(), which is a dynamic data source that
+ * Next.js forbids inside unstable_cache() boundaries.  Use this variant
+ * for cached server functions that read fully-public data (no per-user
+ * RLS filtering needed).  Cookies are never sent, so auth headers are
+ * absent and Supabase applies only public RLS policies.
+ */
+export function createCachedClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } },
+  )
+}
+
+/**
  * Service-role client — bypass RLS.
  * CHỈ dùng trong Server Actions hoặc Route Handlers có xác thực admin.
  * KHÔNG bao giờ import vào Client Component.

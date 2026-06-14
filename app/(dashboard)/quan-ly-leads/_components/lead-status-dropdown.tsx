@@ -5,9 +5,12 @@ import { updateLeadStatus } from '@/app/actions/lead-status'
 import type { LeadStatus }  from '@/app/actions/lead-status'
 
 const STATUS: Record<LeadStatus, { label: string; dot: string; chip: string }> = {
-  new:         { label: 'Chưa xử lý',       dot: 'bg-orange-400', chip: 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  negotiating: { label: 'Đang thương lượng', dot: 'bg-blue-400',   chip: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'         },
-  closed:      { label: 'Đã chốt',           dot: 'bg-green-500',  chip: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'       },
+  new:       { label: 'Mới',         dot: 'bg-blue-400',   chip: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'         },
+  contacted: { label: 'Đã liên hệ', dot: 'bg-purple-400', chip: 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  qualified: { label: 'Tiềm năng',  dot: 'bg-amber-400',  chip: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'     },
+  proposal:  { label: 'Đề xuất',    dot: 'bg-orange-400', chip: 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  won:       { label: 'Thành công', dot: 'bg-green-500',  chip: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'     },
+  lost:      { label: 'Bỏ qua',     dot: 'bg-gray-400',   chip: 'bg-gray-50 text-gray-500 dark:bg-gray-900/30 dark:text-gray-400'         },
 }
 
 interface Props {
@@ -16,12 +19,11 @@ interface Props {
 }
 
 export function LeadStatusDropdown({ inquiryId, currentStatus }: Props) {
-  const [open, setOpen]           = useState(false)
-  const [status, setStatus]       = useState<LeadStatus>(currentStatus)
+  const [open, setOpen]              = useState(false)
+  const [status, setStatus]          = useState<LeadStatus>(currentStatus)
   const [isPending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
@@ -34,7 +36,7 @@ export function LeadStatusDropdown({ inquiryId, currentStatus }: Props) {
   function select(next: LeadStatus) {
     setOpen(false)
     if (next === status) return
-    setStatus(next) // optimistic
+    setStatus(next)
     startTransition(() => updateLeadStatus(inquiryId, next))
   }
 

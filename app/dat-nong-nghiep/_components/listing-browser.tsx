@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { LandListingCard, type LandListingCardProps } from '@/components/land-listing-card'
+import { LandListingCard } from '@/entities/listing'
+import type { LandListingCardProps } from '@/entities/listing'
 
 // ListingEntry extends the card props with server-side filter metadata
 export type ListingEntry = LandListingCardProps & {
