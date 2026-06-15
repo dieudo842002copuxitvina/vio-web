@@ -1,28 +1,76 @@
 'use client'
 
-import { useActionState } from 'react'
-import { useFormStatus }  from 'react-dom'
-import Link               from 'next/link'
-import { Card, CardContent } from '@/shared/ui/card'
-import { Input }             from '@/shared/ui/input'
-import { Button }            from '@/shared/ui/button'
-import { login }             from '@/features/auth/api/auth.server'
-import type { AuthActionState } from '@/features/auth/api/auth.server'
+import { useState, useTransition, useEffect } from 'react'
+import { useRouter }                           from 'next/navigation'
+import { useForm }                             from 'react-hook-form'
+import { zodResolver }                         from '@hookform/resolvers/zod'
+import { z }                                   from 'zod'
+import Link                                    from 'next/link'
+import { Card, CardContent }                   from '@/shared/ui/card'
+import { Input }                               from '@/shared/ui/input'
+import { Button }                              from '@/shared/ui/button'
+import { loginAction }                         from '@/app/actions/auth'
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+const schema = z.object({
+  email:    z.string().min(1, 'Email là bắt buộc').email('Email không hợp lệ'),
+  password: z.string().min(1, 'Mật khẩu là bắt buộc'),
+})
+type FormData = z.infer<typeof schema>
+
+// ── Alert banner ──────────────────────────────────────────────────────────────
+
+function AlertBanner({
+  type, message, onClose,
+}: {
+  type:    'error' | 'success'
+  message: string
+  onClose: () => void
+}) {
+  const isError = type === 'error'
   return (
-    <Button
-      type="submit"
-      variant="primary"
-      size="lg"
-      isLoading={pending}
-      className="w-full"
+    <div
+      role="alert"
+      className={[
+        'flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm',
+        isError
+          ? 'border-red-200   bg-red-50   text-red-700'
+          : 'border-green-200 bg-green-50 text-green-800',
+      ].join(' ')}
     >
-      Đăng nhập
-    </Button>
+      {isError ? (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+             className="mt-0.5 shrink-0" aria-hidden="true">
+          <path fillRule="evenodd" clipRule="evenodd"
+            d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3.5a.75.75 0 0 1 .75.75v3a.75.75 0 0
+               1-1.5 0v-3A.75.75 0 0 1 8 4.5Zm0 7a.875.875 0 1 0 0-1.75.875.875 0 0 0 0 1.75Z"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+             className="mt-0.5 shrink-0" aria-hidden="true">
+          <path fillRule="evenodd" clipRule="evenodd"
+            d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm3.28 4.97a.75.75 0 0 1 0 1.06l-4 4a.75.75
+               0 0 1-1.06 0l-2-2a.75.75 0 1 1 1.06-1.06L6.75 9.44l3.47-3.47a.75.75 0 0 1 1.06 0Z"/>
+        </svg>
+      )}
+      <span className="flex-1 leading-relaxed">{message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        className="shrink-0 opacity-50 transition-opacity hover:opacity-100"
+        aria-label="Đóng thông báo"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
+    </div>
   )
 }
+
+// ── LoginForm ─────────────────────────────────────────────────────────────────
 
 interface LoginFormProps {
   next?:      string
@@ -30,9 +78,36 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ next, authError }: LoginFormProps) {
-  const [state, action] = useActionState<AuthActionState, FormData>(login, null)
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [alert, setAlert] = useState<{ type: 'error' | 'success'; message: string } | null>(
+    authError ? { type: 'error', message: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.' } : null,
+  )
 
-  const errorMessage = (state && 'error' in state ? state.error : null) ?? authError ?? null
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({ resolver: zodResolver(schema) })
+
+  // Auto-dismiss success alerts
+  useEffect(() => {
+    if (!alert || alert.type !== 'success') return
+    const t = setTimeout(() => setAlert(null), 4000)
+    return () => clearTimeout(t)
+  }, [alert])
+
+  function onSubmit(data: FormData) {
+    setAlert(null)
+    startTransition(async () => {
+      const result = await loginAction(data.email, data.password, next)
+      if (!result.ok) {
+        setAlert({ type: 'error', message: result.error })
+        return
+      }
+      router.push(result.redirectTo ?? '/dashboard')
+    })
+  }
 
   return (
     <Card className="w-full max-w-sm mx-auto">
@@ -54,80 +129,71 @@ export function LoginForm({ next, authError }: LoginFormProps) {
           </p>
         </div>
 
-        {/* Error banner */}
-        {errorMessage && (
-          <div
-            role="alert"
-            className="mb-5 flex items-start gap-2.5 rounded-2xl bg-red-50 px-4 py-3 text-[0.875rem] text-red-600"
-          >
-            <svg
-              width="16" height="16" viewBox="0 0 16 16"
-              fill="currentColor" aria-hidden="true" className="mt-0.5 shrink-0"
-            >
-              <path
-                fillRule="evenodd" clipRule="evenodd"
-                d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 4.5Zm0 7a.875.875 0 1 0 0-1.75.875.875 0 0 0 0 1.75Z"
-              />
-            </svg>
-            {errorMessage}
+        {/* Alert */}
+        {alert && (
+          <div className="mb-5">
+            <AlertBanner
+              type={alert.type}
+              message={alert.message}
+              onClose={() => setAlert(null)}
+            />
           </div>
         )}
 
         {/* Form */}
-        <form action={action} noValidate className="flex flex-col gap-4">
-
-          {/* Pass `next` so login() can redirect to the originally requested page */}
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
           {next && <input type="hidden" name="next" value={next} />}
 
           <Input
             id="email"
-            name="email"
             type="email"
             label="Email"
             placeholder="ban@email.com"
             autoComplete="email"
             inputMode="email"
-            required
+            error={errors.email?.message}
+            {...register('email')}
           />
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between">
-              <label
-                htmlFor="password"
-                className="text-[0.8125rem] font-semibold text-gray-600"
-              >
-                Mật khẩu
-              </label>
+          <Input
+            id="password"
+            type="password"
+            label="Mật khẩu"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            error={errors.password?.message}
+            {...register('password')}
+          />
+
+          <div className="mt-2 flex flex-col gap-3">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              isLoading={isPending}
+              className="w-full"
+            >
+              Đăng nhập
+            </Button>
+
+            <p className="text-center text-[0.875rem]">
               <Link
                 href="/quen-mat-khau"
-                className="text-xs text-vio-primary no-underline hover:underline"
+                className="text-vio-forest no-underline hover:underline"
               >
                 Quên mật khẩu?
               </Link>
-            </div>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-            />
+            </p>
           </div>
-
-          <div className="mt-2">
-            <SubmitButton />
-          </div>
-
         </form>
 
-        {/* Footer link */}
+        {/* Footer */}
         <p className="mt-6 text-center text-[0.875rem] text-gray-500">
           Chưa có tài khoản?{' '}
           <Link
             href="/dang-ky"
             prefetch={false}
-            className="font-semibold text-vio-primary no-underline hover:underline"
+            className="font-semibold text-vio-forest no-underline hover:underline"
           >
             Đăng ký miễn phí
           </Link>
