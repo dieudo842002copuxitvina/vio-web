@@ -11,6 +11,26 @@ export type ActionResult =
   | { ok: true;  message?: string; redirectTo?: string }
   | { ok: false; error: string }
 
+// ── In-process rate limiter ───────────────────────────────────────────────────
+// Per-instance (single server process). Upgrade to Upstash Redis when scaling
+// horizontally — swap _check() body only, interface stays identical.
+
+const _rlMap = new Map<string, { n: number; until: number }>()
+
+function _check(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now()
+  const e   = _rlMap.get(key)
+  if (!e || e.until < now) { _rlMap.set(key, { n: 1, until: now + windowMs }); return false }
+  if (e.n >= max)           return true
+  e.n++
+  return false
+}
+
+async function getClientIP(): Promise<string> {
+  const h = await headers()
+  return h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
+
 // ── loginAction ───────────────────────────────────────────────────────────────
 
 export async function loginAction(
@@ -18,6 +38,10 @@ export async function loginAction(
   password: string,
   next      = '/dashboard',
 ): Promise<ActionResult> {
+  const ip = await getClientIP()
+  if (_check(`login:${ip}`, 5, 60_000))
+    return { ok: false, error: 'Quá nhiều lần thử. Vui lòng đợi 1 phút rồi thử lại.' }
+
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
@@ -42,6 +66,10 @@ export async function signupAction(
   password:  string,
   fullName?: string,
 ): Promise<ActionResult> {
+  const ip = await getClientIP()
+  if (_check(`signup:${ip}`, 3, 3_600_000))
+    return { ok: false, error: 'Bạn đã tạo quá nhiều tài khoản. Vui lòng thử lại sau 1 giờ.' }
+
   const supabase = await createClient()
   const { error } = await supabase.auth.signUp({
     email,
@@ -69,6 +97,10 @@ export async function signupAction(
 // /auth/callback?next=/dat-lai-mat-khau which exchanges the code for a session.
 
 export async function resetPasswordAction(email: string): Promise<ActionResult> {
+  const ip = await getClientIP()
+  if (_check(`reset:${ip}`, 3, 300_000))
+    return { ok: false, error: 'Quá nhiều yêu cầu đặt lại mật khẩu. Vui lòng đợi 5 phút.' }
+
   const h        = await headers()
   const host     = h.get('host') ?? 'localhost:3000'
   const protocol = host.startsWith('localhost') ? 'http' : 'https'
