@@ -42,6 +42,11 @@ const eslintConfig = defineConfig([
       "react/no-children-prop":               "warn",
       "react-hooks/set-state-in-effect":      "warn",
       "@typescript-eslint/no-empty-object-type": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        "ignoreRestSiblings": true,
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+      }],
     },
   },
 ]);

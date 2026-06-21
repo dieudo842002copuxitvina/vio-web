@@ -2,7 +2,6 @@ import { notFound }             from 'next/navigation'
 import { Suspense }              from 'react'
 import type { Metadata }         from 'next'
 import Link                      from 'next/link'
-import { createClient }          from '@/lib/supabase/server'
 import { createCachedClient }    from '@/lib/supabase/server'
 import {
   getCategoryPageContext,
@@ -332,10 +331,10 @@ function Breadcrumbs({ crumbs }: { crumbs: CategoryCrumb[] }) {
   )
 }
 
-function SubCategoryPills({ children, siblings }: { children: Category[]; siblings: Category[] }) {
-  const items = children.length > 0 ? children : siblings.slice(0, 8)
+function SubCategoryPills({ subcategories, siblings }: { subcategories: Category[]; siblings: Category[] }) {
+  const items = subcategories.length > 0 ? subcategories : siblings.slice(0, 8)
   if (!items.length) return null
-  const label = children.length > 0 ? 'Danh mục con' : 'Danh mục liên quan'
+  const label = subcategories.length > 0 ? 'Danh mục con' : 'Danh mục liên quan'
 
   return (
     <div className="mt-5">
@@ -599,7 +598,7 @@ export default async function CategoryPage({
           </div>
 
           {/* Sub-categories + siblings */}
-          <SubCategoryPills children={children} siblings={siblings} />
+          <SubCategoryPills subcategories={children} siblings={siblings} />
 
           {/* Active filter chips */}
           <ActiveFilterChips af={af} attributes={attributes} fullSlug={fullSlug} />

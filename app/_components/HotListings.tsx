@@ -1,4 +1,3 @@
-import Link             from 'next/link'
 import { LandListingCard, type LandListingCardProps, listingToLandCard } from '@/entities/listing'
 import { getFeaturedListings, getListings } from '@/entities/listing/api/listing.server'
 import { getTrendingListings }    from '@/features/recommendation/api/recommendation.server'

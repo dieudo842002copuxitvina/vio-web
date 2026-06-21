@@ -39,7 +39,6 @@ export default async function BanDoPage({ searchParams }: PageProps) {
 
   // Build query params
   const priceMax  = filters.priceMax  ? Number(filters.priceMax)  : undefined
-  const areaMax   = filters.areaMax   ? Number(filters.areaMax)   : undefined
   const landTypes = filters.landType  ? [filters.landType]        : undefined
 
   const result = await fetchLandListings({

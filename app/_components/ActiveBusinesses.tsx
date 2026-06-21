@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { createCachedClient } from '@/lib/supabase/server'
 
@@ -62,7 +63,7 @@ export async function ActiveBusinesses() {
               {/* Avatar */}
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                 {s.avatar_url
-                  ? <img src={s.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  ? <Image src={s.avatar_url} alt="" width={56} height={56} className="h-full w-full object-cover" unoptimized />
                   : <div className="flex h-full w-full items-center justify-center text-2xl select-none" aria-hidden="true">🏪</div>
                 }
               </div>

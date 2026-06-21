@@ -21,26 +21,10 @@ export interface MapFilters {
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
-function FilterIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
 function ChevronDown() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
-
-function CloseIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -292,7 +276,7 @@ export function MapSearchPanel({
   }, [filters, pathname, router, searchParams])
 
   // ── Province select from map cluster ──────────────────────────────────────
-  const handleProvinceSelect = useCallback((id: number, _slug: string) => {
+  const handleProvinceSelect = useCallback((id: number) => {
     const prov = provinces.find(p => p.id === id)
     if (prov) applyFilters({ province: prov.slug })
   }, [provinces, applyFilters])

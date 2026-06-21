@@ -13,12 +13,6 @@ interface StickyMobileCTAProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function maskPhone(phone: string): string {
-  const d = phone.replace(/\D/g, '')
-  if (d.length < 8) return phone
-  return d.slice(0, 4) + ' xxx ' + d.slice(-3)
-}
-
 function zaloHref(phone: string | null, zalo: string | null): string | null {
   if (zalo) return zalo.startsWith('http') ? zalo : `https://zalo.me/${zalo}`
   if (phone) return `https://zalo.me/${phone.replace(/\D/g, '')}`
@@ -107,7 +101,7 @@ function InquirySheet({ listingTitle, onClose }: { listingTitle: string; onClose
 // ── StickyMobileCTA ───────────────────────────────────────────────────────────
 
 export function StickyMobileCTA({
-  phone, zalo, listing_title, listing_id,
+  phone, zalo, listing_title,
 }: StickyMobileCTAProps) {
   const [phoneRevealed, setPhoneRevealed] = useState(false)
   const [showInquiry,   setShowInquiry]   = useState(false)

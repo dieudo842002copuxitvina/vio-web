@@ -1,20 +1,35 @@
-// ── ListingQualityScore ────────────────────────────────────────────────────────
-// Server component.  Computes a 0-100 trust score from listing attributes and
-// renders a visual breakdown.  Visible to ALL buyers on the listing detail page.
-// Score tiers: <50 red, 50-74 amber, 75-89 green, 90+ vio-forest.
+// ListingQualityScore — displays the completeness score on listing detail pages.
+// Accepts either a persisted ListingCompleteness row (preferred, from DB) or
+// falls back to computing the score client-side from QualityInputs.
+// Server component — no 'use client' needed.
 
-// ── Score computation ─────────────────────────────────────────────────────────
+import type { ListingCompleteness, CompletenessTier } from '@/entities/listing/model/normalized-types'
+import { TIER_CONFIG } from '@/entities/listing/api/completeness.server'
+
+// ── Legacy QualityInputs (for listings pre-migration 030 with no sub-entities) ─
 
 export interface QualityInputs {
-  mediaCount:      number
-  hasPrice:        boolean
-  hasArea:         boolean
-  hasLegalStatus:  boolean
-  descriptionLen:  number
-  ownerVerified:   boolean
-  hasLocation:     boolean
-  hasLandType:     boolean
-  hasContact:      boolean
+  // Media
+  mediaCount:     number
+  // Listing fields
+  hasPrice:       boolean
+  hasArea:        boolean
+  hasLegalStatus: boolean
+  descriptionLen: number
+  // Seller
+  ownerVerified:  boolean
+  // Location
+  hasLocation:    boolean
+  hasLandType:    boolean
+  hasContact:     boolean
+  // New fields from normalized tables (optional — present post-migration 030)
+  hasGps?:           boolean
+  hasRoadAccess?:    boolean
+  hasWaterSource?:   boolean
+  hasSoilType?:      boolean
+  hasCurrentCrops?:  boolean
+  hasCertifications?: boolean
+  mediaVideoCount?:  number
 }
 
 interface ScoreItem {
@@ -24,55 +39,69 @@ interface ScoreItem {
   pass:   boolean
 }
 
-function computeScore(i: QualityInputs): { total: number; items: ScoreItem[] } {
+// ── Legacy score computation (EAV-based, pre-migration 030 listings) ──────────
+
+function computeLegacyScore(i: QualityInputs): { total: number; items: ScoreItem[] } {
   const items: ScoreItem[] = [
     {
       label:  'Hình ảnh',
       points: 20,
-      earned: i.mediaCount >= 5 ? 20 : i.mediaCount >= 2 ? 14 : i.mediaCount >= 1 ? 8 : 0,
+      earned: i.mediaCount >= 5 ? 20 : i.mediaCount >= 3 ? 16 : i.mediaCount >= 2 ? 12 : i.mediaCount >= 1 ? 6 : 0,
       pass:   i.mediaCount >= 2,
     },
     {
-      label:  'Giá bán rõ ràng',
-      points: 15,
-      earned: i.hasPrice ? 15 : 0,
-      pass:   i.hasPrice,
+      label:  'Toạ độ GPS',
+      points: 10,
+      earned: i.hasGps ? 10 : 0,
+      pass:   !!i.hasGps,
     },
     {
       label:  'Pháp lý (sổ đỏ/hồng)',
-      points: 20,
-      earned: i.hasLegalStatus ? 20 : 0,
-      pass:   i.hasLegalStatus,
-    },
-    {
-      label:  'Diện tích',
       points: 15,
-      earned: i.hasArea ? 15 : 0,
-      pass:   i.hasArea,
-    },
-    {
-      label:  'Mô tả chi tiết',
-      points: 12,
-      earned: i.descriptionLen >= 300 ? 12 : i.descriptionLen >= 80 ? 7 : i.descriptionLen > 0 ? 3 : 0,
-      pass:   i.descriptionLen >= 80,
+      earned: i.hasLegalStatus ? 12 : 0,
+      pass:   i.hasLegalStatus,
     },
     {
       label:  'Chủ đất xác thực',
       points: 10,
-      earned: i.ownerVerified ? 10 : 0,
+      earned: i.ownerVerified ? 10 : 3,
       pass:   i.ownerVerified,
     },
     {
-      label:  'Vị trí',
-      points: 5,
-      earned: i.hasLocation ? 5 : 0,
-      pass:   i.hasLocation,
+      label:  'Đường vào & nguồn nước',
+      points: 10,
+      earned: (i.hasRoadAccess ? 5 : 0) + (i.hasWaterSource ? 5 : 0),
+      pass:   !!i.hasRoadAccess && !!i.hasWaterSource,
     },
     {
-      label:  'Loại đất',
-      points: 3,
-      earned: i.hasLandType ? 3 : 0,
-      pass:   i.hasLandType,
+      label:  'Loại đất & cây trồng',
+      points: 10,
+      earned: (i.hasSoilType ? 5 : 0) + (i.hasCurrentCrops ? 5 : 0),
+      pass:   !!i.hasSoilType,
+    },
+    {
+      label:  'Diện tích',
+      points: 10,
+      earned: i.hasArea ? 10 : 0,
+      pass:   i.hasArea,
+    },
+    {
+      label:  'Mô tả chi tiết',
+      points: 5,
+      earned: i.descriptionLen >= 300 ? 5 : i.descriptionLen >= 80 ? 3 : i.descriptionLen > 0 ? 1 : 0,
+      pass:   i.descriptionLen >= 80,
+    },
+    {
+      label:  'Video thực địa',
+      points: 5,
+      earned: (i.mediaVideoCount ?? 0) > 0 ? 5 : 0,
+      pass:   (i.mediaVideoCount ?? 0) > 0,
+    },
+    {
+      label:  'Chứng nhận (VietGAP...)',
+      points: 5,
+      earned: i.hasCertifications ? 5 : 0,
+      pass:   !!i.hasCertifications,
     },
   ]
 
@@ -80,49 +109,58 @@ function computeScore(i: QualityInputs): { total: number; items: ScoreItem[] } {
   return { total, items }
 }
 
-function scoreColor(n: number): string {
-  if (n >= 90) return '#1A4D2E'
-  if (n >= 75) return '#2D7A4F'
-  if (n >= 50) return '#FF9500'
-  return '#FF3B30'
-}
+// ── Convert persisted ListingCompleteness → ScoreItem[] ──────────────────────
 
-function scoreBg(n: number): string {
-  if (n >= 90) return 'bg-[#E8F0EB]'
-  if (n >= 75) return 'bg-[#EAF5EE]'
-  if (n >= 50) return 'bg-[#FFF5E6]'
-  return 'bg-[#FFF0EF]'
-}
-
-function scoreLabel(n: number): string {
-  if (n >= 90) return 'Tin chất lượng cao'
-  if (n >= 75) return 'Tin tốt'
-  if (n >= 50) return 'Có thể cải thiện'
-  return 'Tin thiếu thông tin'
+function completenessToItems(c: ListingCompleteness): ScoreItem[] {
+  return [
+    { label: 'Hình ảnh',                points: 20, earned: c.photo_score,  pass: c.photo_score  >= 12 },
+    { label: 'Toạ độ GPS',              points: 10, earned: c.gps_score,    pass: c.gps_score    > 0  },
+    { label: 'Pháp lý',                 points: 15, earned: c.legal_score,  pass: c.legal_score  >= 12 },
+    { label: 'Chủ đất xác thực',        points: 10, earned: c.seller_score, pass: c.seller_score >= 10 },
+    { label: 'Hạ tầng (đường / nước)',  points: 15, earned: c.infra_score,  pass: c.infra_score  >= 10 },
+    { label: 'Nông nghiệp (đất / cây)', points: 20, earned: c.agri_score,   pass: c.agri_score   >= 15 },
+    { label: 'Mô tả',                   points: 5,  earned: c.text_score,   pass: c.text_score   >= 3  },
+    { label: 'Video thực địa',          points: 5,  earned: c.video_score,  pass: c.video_score  > 0  },
+  ]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface ListingQualityScoreProps {
-  inputs: QualityInputs
+  // At least one must be provided.
+  // If persisted is present, it takes precedence over inputs.
+  inputs?:    QualityInputs
+  persisted?: ListingCompleteness | null
 }
 
-export function ListingQualityScore({ inputs }: ListingQualityScoreProps) {
-  const { total, items } = computeScore(inputs)
-  const color   = scoreColor(total)
-  const bgClass = scoreBg(total)
-  const label   = scoreLabel(total)
-  const pct     = Math.round((total / 100) * 100)
+export function ListingQualityScore({ inputs, persisted }: ListingQualityScoreProps) {
+  let total: number
+  let tier: CompletenessTier
+  let items: ScoreItem[]
 
+  if (persisted) {
+    total = persisted.total_score
+    tier  = persisted.tier
+    items = completenessToItems(persisted)
+  } else if (inputs) {
+    const r = computeLegacyScore(inputs)
+    total   = Math.min(r.total, 100)
+    tier    = total >= 90 ? 'platinum' : total >= 75 ? 'gold' : total >= 55 ? 'silver' : 'bronze'
+    items   = r.items
+  } else {
+    return null
+  }
+
+  const cfg     = TIER_CONFIG[tier]
   const passing = items.filter(it => it.pass)
-  const failing = items.filter(it => !it.pass)
+  const failing = items.filter(it => !it.pass && it.points > 0)
 
   return (
     <section
       aria-labelledby="quality-heading"
-      className={`rounded-2xl border border-neutral-100 p-5 ${bgClass}`}
+      className={`rounded-2xl border border-neutral-100 p-5 ${cfg.bgClass}`}
     >
-      {/* Header row */}
+      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p
@@ -131,16 +169,16 @@ export function ListingQualityScore({ inputs }: ListingQualityScoreProps) {
           >
             Chất lượng tin đăng
           </p>
-          <p className="m-0 mt-0.5 text-[13px] font-semibold" style={{ color }}>
-            {label}
+          <p className="m-0 mt-0.5 text-[13px] font-semibold" style={{ color: cfg.color }}>
+            {cfg.label}
           </p>
         </div>
 
-        {/* Score ring — CSS-only, no canvas */}
+        {/* Score ring */}
         <div
           className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full
                      border-[3px] text-[17px] font-black"
-          style={{ borderColor: color, color }}
+          style={{ borderColor: cfg.color, color: cfg.color }}
           aria-label={`${total} trên 100`}
         >
           {total}
@@ -151,7 +189,7 @@ export function ListingQualityScore({ inputs }: ListingQualityScoreProps) {
       <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200/70">
         <div
           className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${pct}%`, background: color }}
+          style={{ width: `${total}%`, background: cfg.color }}
           role="progressbar"
           aria-valuenow={total}
           aria-valuemin={0}
@@ -159,18 +197,18 @@ export function ListingQualityScore({ inputs }: ListingQualityScoreProps) {
         />
       </div>
 
-      {/* Passing items — compact grid */}
+      {/* Passing items */}
       {passing.length > 0 && (
         <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
           {passing.map(it => (
             <div key={it.label} className="flex items-center gap-1.5">
               <div
                 className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-                style={{ background: `${color}20` }}
+                style={{ background: `${cfg.color}20` }}
                 aria-hidden="true"
               >
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke={color} strokeWidth="3"
+                  <path d="M5 13l4 4L19 7" stroke={cfg.color} strokeWidth="3"
                         strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
@@ -180,7 +218,7 @@ export function ListingQualityScore({ inputs }: ListingQualityScoreProps) {
         </div>
       )}
 
-      {/* Failing items — what's missing */}
+      {/* Failing items */}
       {failing.length > 0 && (
         <div className="rounded-xl border border-neutral-200/80 bg-white/60 px-3.5 py-3">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-400">
@@ -190,14 +228,11 @@ export function ListingQualityScore({ inputs }: ListingQualityScoreProps) {
             {failing.map(it => (
               <div key={it.label} className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div
-                    className="h-4 w-4 shrink-0 rounded-full border border-neutral-200 bg-white"
-                    aria-hidden="true"
-                  />
+                  <div className="h-4 w-4 shrink-0 rounded-full border border-neutral-200 bg-white" aria-hidden="true" />
                   <span className="text-[12px] text-neutral-400">{it.label}</span>
                 </div>
                 <span className="text-[11px] font-semibold text-neutral-400">
-                  +{it.points}đ
+                  +{it.points - it.earned}đ
                 </span>
               </div>
             ))}

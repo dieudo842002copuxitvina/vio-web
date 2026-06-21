@@ -1,5 +1,6 @@
 import { notFound }  from 'next/navigation'
 import type { Metadata } from 'next'
+import Image           from 'next/image'
 import Link            from 'next/link'
 import { createClient }          from '@/lib/supabase/server'
 import { getStorefrontDetail }   from '@/features/storefronts/services/storefront-detail'
@@ -119,14 +120,14 @@ export default async function BusinessProfilePage({
       {/* ── Cover image ── */}
       <section className="relative h-56 overflow-hidden bg-gray-100 md:h-72" aria-hidden="true">
         {sf.cover_image_url ? (
-          <img
+          <Image
             src={sf.cover_image_url}
             alt=""
             width={1080}
             height={288}
             className="h-full w-full object-cover"
-            loading="eager"
-            fetchPriority="high"
+            priority
+            unoptimized
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-blue-50 via-emerald-50 to-amber-50 dark:from-blue-950/30 dark:via-emerald-950/30 dark:to-amber-950/30" />
@@ -154,13 +155,13 @@ export default async function BusinessProfilePage({
         <div className="-mt-16 mb-4 pl-1">
           <div className="h-24 w-24 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white shadow-xl dark:ring-[#1C1C1E]">
             {sf.avatar_url ? (
-              <img
+              <Image
                 src={sf.avatar_url}
                 alt={sf.business_name}
                 width={96}
                 height={96}
                 className="h-full w-full object-cover"
-                loading="eager"
+                unoptimized
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-4xl select-none">

@@ -173,11 +173,11 @@ function EmptyState() {
         Lưu bộ lọc từ trang tìm kiếm để theo dõi đất mới phù hợp tiêu chí của bạn
       </p>
       <Link
-        href="/tim-kiem"
+        href="/dat-nong-nghiep"
         className="mt-5 rounded-full bg-vio-forest px-5 py-2.5 text-[14px]
                    font-bold text-white no-underline hover:opacity-90"
       >
-        Bắt đầu tìm kiếm
+        Khám phá đất ngay
       </Link>
     </div>
   )

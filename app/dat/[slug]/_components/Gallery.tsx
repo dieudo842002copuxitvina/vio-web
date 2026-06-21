@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
-import type { ListingMediaItem } from '@/entities/listing/api/listing.server'
+import Image                                 from 'next/image'
+import Link                                  from 'next/link'
+import type { ListingMediaItem }             from '@/entities/listing/api/listing.server'
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
@@ -47,11 +48,12 @@ function Lightbox({
 
       {/* Main image */}
       <div className="relative min-h-0 flex-1">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={media[idx]?.url}
+        <Image
+          src={media[idx]?.url ?? ''}
           alt={media[idx]?.alt ?? ''}
-          className="absolute inset-0 h-full w-full object-contain"
+          fill
+          className="object-contain"
+          sizes="100vw"
         />
         {idx > 0 && (
           <button
@@ -84,12 +86,11 @@ function Lightbox({
             <button
               key={img.id} type="button" onClick={() => onChange(i)}
               className={[
-                'h-14 w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all duration-150',
+                'relative h-14 w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all duration-150',
                 i === idx ? 'border-white opacity-100' : 'border-transparent opacity-40 hover:opacity-65',
               ].join(' ')}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="h-full w-full object-cover"/>
+              <Image src={img.url} alt="" fill className="object-cover" sizes="80px" />
             </button>
           ))}
         </div>
@@ -123,18 +124,18 @@ export function Gallery({ media, title, backHref = '/tim-kiem' }: GalleryProps) 
             className="grid h-[52vw] max-h-[500px] min-h-[240px]"
             style={{ gridTemplateColumns: images.length > 1 ? '2fr 1fr' : '1fr' }}
           >
-            {/* Main image */}
+            {/* Main image — priority: above-the-fold LCP candidate */}
             <button
               type="button" onClick={() => open(0)} aria-label="Xem ảnh 1"
               className="group relative row-span-2 cursor-zoom-in overflow-hidden"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={images[0].url}
                 alt={title}
-                loading="eager"
-                fetchPriority="high"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                fill
+                priority
+                className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                sizes="(max-width: 640px) 100vw, 66vw"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
             </button>
@@ -143,7 +144,7 @@ export function Gallery({ media, title, backHref = '/tim-kiem' }: GalleryProps) 
             {images.length > 1 && (
               <div className="grid grid-rows-2">
                 {[1, 2, 3, 4].map(n => {
-                  const img = images[n]
+                  const img    = images[n]
                   const isLast = n === 4 && images.length > 5
                   return (
                     <button
@@ -155,14 +156,15 @@ export function Gallery({ media, title, backHref = '/tim-kiem' }: GalleryProps) 
                         'group relative cursor-zoom-in overflow-hidden border-l border-t border-white/20',
                         n >= 3 ? 'hidden sm:block' : '',
                       ].join(' ')}
-                      style={{ display: n >= 3 ? undefined : undefined }}
                     >
                       {img ? (
                         <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={img.url} alt="" loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                          <Image
+                            src={img.url}
+                            alt=""
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                            sizes="(max-width: 640px) 50vw, 17vw"
                           />
                           {isLast && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55">

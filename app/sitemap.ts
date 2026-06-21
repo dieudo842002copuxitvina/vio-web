@@ -2,6 +2,17 @@ import type { MetadataRoute } from 'next'
 import { createClient }          from '@/lib/supabase/server'
 import { getLandSitemapFeedSEO } from '@/features/seo/api/seo-feeds.server'
 
+// Land type DB key → URL slug (mirrors LAND_TYPES in province+type page)
+const LAND_TYPE_SLUG: Record<string, string> = {
+  lua:          'lua',
+  rau_mau:      'rau-mau',
+  cay_lau_nam:  'cay-lau-nam',
+  cay_an_trai:  'an-trai',
+  lam_nghiep:   'lam-nghiep',
+  mat_nuoc:     'mat-nuoc',
+  hon_hop:      'hon-hop',
+}
+
 // ── Base URL ──────────────────────────────────────────────────────────────────
 // Hardcoded — this is a public, production-only document.
 // NEXT_PUBLIC_SITE_URL is intentionally NOT used here: it is set to
@@ -57,6 +68,12 @@ function buildStaticEntries(): SitemapEntry[] {
       changeFrequency: 'daily',
       priority:        0.7,
     },
+    {
+      url:             u('/ban-do-nong-nghiep'),
+      lastModified:    new Date(),
+      changeFrequency: 'monthly',
+      priority:        0.8,
+    },
   ]
 }
 
@@ -104,6 +121,38 @@ function buildStorefrontEntries(storefronts: StorefrontRow[]): SitemapEntry[] {
   }))
 }
 
+interface DistrictComboRow {
+  province_slug: string
+  district_slug: string
+  updated_at:    string
+}
+
+interface ProvinceTypeComboRow {
+  province_slug: string
+  land_type:     string
+  updated_at:    string
+}
+
+function buildDistrictEntries(rows: DistrictComboRow[]): SitemapEntry[] {
+  return rows.map(r => ({
+    url:             u(`/dat-nong-nghiep/${r.province_slug}/${r.district_slug}`),
+    lastModified:    r.updated_at,
+    changeFrequency: 'weekly' as const,
+    priority:        0.6,
+  }))
+}
+
+function buildProvinceTypeEntries(rows: ProvinceTypeComboRow[]): SitemapEntry[] {
+  return rows
+    .filter(r => LAND_TYPE_SLUG[r.land_type])
+    .map(r => ({
+      url:             u(`/dat-nong-nghiep/${r.province_slug}/loai/${LAND_TYPE_SLUG[r.land_type]}`),
+      lastModified:    r.updated_at,
+      changeFrequency: 'weekly' as const,
+      priority:        0.7,
+    }))
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -111,7 +160,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Listings read from MV (pre-filtered, no moderation conditions needed).
   // Other entities have no MV yet — direct table reads remain.
-  const [listings, provincesRes, categoriesRes, storefrontsRes] = await Promise.all([
+  const [listings, provincesRes, categoriesRes, storefrontsRes, districtComboRes, typeComboRes] = await Promise.all([
     getLandSitemapFeedSEO(1_000),
 
     supabase
@@ -131,11 +180,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq('is_public', true)
       .order('updated_at', { ascending: false })
       .limit(500),
+
+    // Districts with >= 3 approved listings
+    supabase.rpc('get_district_sitemap_combos', { min_count: 3 }).limit(2_000),
+
+    // Province × land_type combos with >= 3 approved listings
+    supabase.rpc('get_province_type_sitemap_combos', { min_count: 3 }).limit(1_000),
   ])
 
-  const provinces   = (provincesRes.data   ?? []) as ProvinceRow[]
-  const categories  = (categoriesRes.data  ?? []) as CategoryRow[]
-  const storefronts = (storefrontsRes.data ?? []) as StorefrontRow[]
+  const provinces        = (provincesRes.data      ?? []) as ProvinceRow[]
+  const categories       = (categoriesRes.data     ?? []) as CategoryRow[]
+  const storefronts      = (storefrontsRes.data    ?? []) as StorefrontRow[]
+  const districtCombos   = (districtComboRes.data  ?? []) as DistrictComboRow[]
+  const typeProvCombos   = (typeComboRes.data       ?? []) as ProvinceTypeComboRow[]
 
   return [
     ...buildStaticEntries(),
@@ -143,5 +200,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...buildListingEntries(listings),
     ...buildCategoryEntries(categories),
     ...buildStorefrontEntries(storefronts),
+    ...buildDistrictEntries(districtCombos),
+    ...buildProvinceTypeEntries(typeProvCombos),
   ]
 }

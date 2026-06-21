@@ -56,13 +56,6 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(self)' },
         ],
       },
-      // Cache immutable static assets aggressively
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
     ]
   },
 
@@ -76,12 +69,6 @@ const nextConfig: NextConfig = {
         destination: '/login',
         permanent:   true,
       },
-      {
-        source:      '/dang-ky',
-        destination: '/login',
-        permanent:   true,
-      },
-
       // ── Legacy business directory routes → canonical /doanh-nghiep/ ─────────
       // Index page
       {

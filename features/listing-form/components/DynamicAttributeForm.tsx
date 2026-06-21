@@ -36,7 +36,7 @@ export function DynamicAttributeForm({
 
   // Validate required fields — called by parent before submission.
   // Exposed via ref if needed, but kept simple for now.
-  const validate = (): boolean => {
+  const _validate = (): boolean => {
     const errs: Record<string, string> = {}
     for (const field of fields) {
       const v = values[field.key]

@@ -20,6 +20,7 @@ export async function login(
 ): Promise<AuthActionState> {
   const email    = (formData.get('email')    as string | null)?.trim() ?? ''
   const password = (formData.get('password') as string | null)         ?? ''
+  const next     = (formData.get('next')     as string | null)         ?? '/dashboard'
 
   if (!email || !password) {
     return { error: 'Vui lòng điền đầy đủ email và mật khẩu.' }
@@ -37,7 +38,9 @@ export async function login(
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  // Only redirect to relative paths to prevent open redirect
+  const destination = next.startsWith('/') ? next : '/dashboard'
+  redirect(destination)
 }
 
 // ── signup ─────────────────────────────────────────────────────────────────
@@ -89,5 +92,5 @@ export async function logout(): Promise<never> {
   const supabase = await createClient()
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
-  redirect('/login')
+  redirect('/')
 }

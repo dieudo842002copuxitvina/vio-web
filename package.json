@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
     "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
@@ -19,10 +20,12 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.76.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

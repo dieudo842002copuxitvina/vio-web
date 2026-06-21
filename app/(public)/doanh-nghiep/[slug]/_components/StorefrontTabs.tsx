@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image         from 'next/image'
 import Link          from 'next/link'
 import { BookingSheet } from '@/features/booking/BookingSheet'
 import type {
@@ -119,7 +120,7 @@ function NearbyCard({ n }: { n: NearbyRef }) {
     >
       <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-700">
         {n.avatar_url
-          ? <img src={n.avatar_url} alt="" width={44} height={44} className="h-full w-full object-cover" loading="lazy" />
+          ? <Image src={n.avatar_url} alt="" width={44} height={44} className="h-full w-full object-cover" unoptimized />
           : <div className="flex h-full w-full items-center justify-center text-lg">🏪</div>
         }
       </div>
@@ -210,7 +211,7 @@ export function StorefrontTabs({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              aria-selected={activeTab === tab.id}
+              aria-pressed={activeTab === tab.id}
               className={[
                 'flex h-11 min-h-[44px] shrink-0 items-center gap-1.5 border-b-2 px-4',
                 'text-[0.9375rem] font-semibold transition-colors',

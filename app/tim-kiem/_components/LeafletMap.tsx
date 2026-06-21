@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import type { LandListingHit } from '@/features/search/api/land-search.server'
 
 // ── Province centroids ────────────────────────────────────────────────────────
 // Approximate center coordinates for Vietnamese provinces.
@@ -194,13 +193,14 @@ export function LeafletMap({ listings, hoveredId }: LeafletMapProps) {
       }
     })
 
+    const markers = markersRef.current
     return () => {
       isMounted = false
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
       }
-      markersRef.current.clear()
+      markers.clear()
     }
   // Re-initialize when listings change
   // eslint-disable-next-line react-hooks/exhaustive-deps

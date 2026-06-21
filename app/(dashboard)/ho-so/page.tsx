@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Image                             from 'next/image'
 import { createClient }                  from '@/lib/supabase/client'
 import { Card, CardHeader, CardContent } from '@/shared/ui/card'
 import { Input }                         from '@/shared/ui/input'
@@ -141,7 +142,10 @@ export default function HoSoPage() {
 
   // Cascade: province → districts
   useEffect(() => {
-    if (!form.province_id) { setDistricts([]); setWards([]); return }
+    if (!form.province_id) {
+      void Promise.resolve().then(() => { setDistricts([]); setWards([]) })
+      return
+    }
     createClient()
       .from('districts')
       .select('id, name')
@@ -155,7 +159,10 @@ export default function HoSoPage() {
 
   // Cascade: district → wards
   useEffect(() => {
-    if (!form.district_id) { setWards([]); return }
+    if (!form.district_id) {
+      void Promise.resolve().then(() => setWards([]))
+      return
+    }
     createClient()
       .from('wards')
       .select('id, name')
@@ -294,7 +301,7 @@ export default function HoSoPage() {
                 aria-label="Tải ảnh bìa"
               >
                 {(coverPreview ?? coverUrl) ? (
-                  <img src={coverPreview ?? coverUrl!} alt="Ảnh bìa" className="h-full w-full object-cover" />
+                  <Image src={coverPreview ?? coverUrl!} alt="Ảnh bìa" fill className="object-cover" unoptimized />
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center gap-1 text-gray-400">
                     <span className="text-2xl" aria-hidden="true">🖼</span>
@@ -319,7 +326,7 @@ export default function HoSoPage() {
                 aria-label="Tải ảnh đại diện"
               >
                 {(avatarPreview ?? avatarUrl) ? (
-                  <img src={avatarPreview ?? avatarUrl!} alt="Avatar" className="h-full w-full object-cover" />
+                  <Image src={avatarPreview ?? avatarUrl!} alt="Avatar" fill className="object-cover" unoptimized />
                 ) : (
                   <span className="select-none text-2xl" aria-hidden="true">🏪</span>
                 )}

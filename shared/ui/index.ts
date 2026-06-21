@@ -21,6 +21,9 @@ export type { ProgressBarProps }                              from './progress-b
 export { SectionHeader }                                      from './section-header'
 export type { SectionHeaderProps }                            from './section-header'
 
+export { Textarea }                                           from './textarea'
+export type { TextareaProps }                                 from './textarea'
+
 export { cn }                                                 from './utils'
 
 export { Container }                                          from './container'

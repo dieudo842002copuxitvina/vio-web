@@ -1,5 +1,6 @@
 import { Suspense }        from 'react'
 import type { ReactNode }  from 'react'
+import Link                from 'next/link'
 
 import { ShellProvider }   from './_components/ShellProvider'
 import { TopNav }          from './_components/TopNav'
@@ -86,7 +87,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         className="pointer-events-none fixed inset-x-0 z-30 flex justify-center md:hidden"
         style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom) + 12px)' }}
       >
-        <a
+        <Link
           href="/dang-tin-dat"
           className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#1A4D2E] px-5 py-3 text-[14px] font-bold text-white shadow-[0_4px_20px_rgba(26,77,46,0.35)] no-underline active:scale-[0.97] transition-transform"
         >
@@ -94,7 +95,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
           </svg>
           Đăng tin
-        </a>
+        </Link>
       </div>
 
       {/* ── Mobile bottom tab bar ─────────────────────────────────────── */}

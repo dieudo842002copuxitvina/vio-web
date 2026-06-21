@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image        from 'next/image'
 import type { ListingMedia } from '@/entities/listing'
 
 interface ListingGalleryProps {
@@ -40,11 +41,13 @@ export function ListingGallery({ images, title, className = '' }: ListingGallery
             aria-label={current.alt ?? title}
           />
         ) : (
-          <img
+          <Image
             src={current.url}
             alt={current.alt ?? title}
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
-            loading="eager"
+            fill
+            className="object-cover transition-opacity duration-300"
+            priority
+            unoptimized
           />
         )}
 
@@ -97,11 +100,12 @@ export function ListingGallery({ images, title, className = '' }: ListingGallery
               ].join(' ')}
               aria-label={`Xem ảnh ${i + 1}`}
             >
-              <img
+              <Image
                 src={img.url}
                 alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
+                fill
+                className="object-cover"
+                unoptimized
               />
             </button>
           ))}

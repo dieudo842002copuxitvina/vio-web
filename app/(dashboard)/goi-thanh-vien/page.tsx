@@ -5,6 +5,8 @@ import {
   getActiveSubscription,
 }                         from '@/features/billing/api/subscription.server'
 import { PLAN_DISPLAY }   from '@/features/billing/types'
+import { CancelSubscriptionButton } from './_components/CancelSubscriptionButton'
+import { BoostCheckoutButton }      from '@/app/(dashboard)/xuc-tien-tin-dang/_components/BoostCheckoutButton'
 
 export const metadata: Metadata = { title: 'Gói thành viên — VIO AGRI' }
 export const revalidate = 0
@@ -110,12 +112,7 @@ function ProCard({ periodEnd, periodStart }: { periodEnd: string | null; periodS
           >
             Quản lý gói
           </Link>
-          <Link
-            href="/lien-he?subject=cancel-subscription"
-            className="text-[12px] text-gray-400 no-underline hover:text-gray-600 hover:underline"
-          >
-            Hủy đăng ký
-          </Link>
+          <CancelSubscriptionButton />
         </div>
       </div>
     </div>
@@ -170,15 +167,13 @@ function FreeUpgradeCard() {
 
         {/* CTA */}
         <div className="mt-6 bg-black/30 px-6 py-5">
-          <p className="m-0 mb-3 text-[12px] text-white/50">
-            Tích hợp thanh toán đang chuẩn bị. Liên hệ admin để kích hoạt ngay.
-          </p>
-          <Link
-            href="/lien-he?subject=upgrade-pro"
-            className="flex items-center justify-center rounded-full bg-white py-3 text-[14px] font-bold text-gray-900 no-underline transition-opacity hover:opacity-90"
-          >
-            Liên hệ nâng cấp Pro
-          </Link>
+          <BoostCheckoutButton
+            productType="pro_monthly"
+            label={`Nâng cấp Pro — ${fmtPrice(pro.priceVnd)}/tháng`}
+            className="flex w-full cursor-pointer items-center justify-center rounded-full bg-white
+                       py-3 text-[14px] font-bold text-gray-900 transition-opacity
+                       hover:opacity-90 disabled:opacity-50"
+          />
         </div>
       </div>
 
@@ -190,12 +185,14 @@ function FreeUpgradeCard() {
 
 function ComparisonTable() {
   const rows = [
-    { label: 'Số tin đăng',          free: '10',        pro: '100'          },
-    { label: 'Phân tích',            free: '7 ngày',    pro: '30 ngày'      },
-    { label: 'CRM Leads',            free: 'Cơ bản',    pro: 'Đầy đủ'       },
-    { label: 'Lead nóng & rất nóng', free: '—',         pro: '✓'            },
-    { label: 'Smart Matching',       free: '—',         pro: '✓'            },
-    { label: 'Featured Listing',     free: '—',         pro: '✓'            },
+    { label: 'Số tin đăng',             free: '10',         pro: '100'          },
+    { label: 'Phân tích',               free: '7 ngày',     pro: '30 ngày'      },
+    { label: 'Lead Funnel Analytics',   free: 'Cơ bản',     pro: 'Đầy đủ'       },
+    { label: 'Lead nóng & rất nóng',    free: '—',          pro: '✓'            },
+    { label: 'ROI & Health Score',      free: '—',          pro: '✓'            },
+    { label: 'Smart Matching',          free: '—',          pro: '✓'            },
+    { label: 'Boost 30 ngày / Spotlight', free: '—',        pro: '✓'            },
+    { label: 'Featured Listing',        free: '—',          pro: '✓'            },
   ]
 
   return (
@@ -251,10 +248,35 @@ export default async function GoiThanhVienPage() {
           )}
         </div>
 
-        {/* Right: comparison */}
-        <div>
-          <h2 className="m-0 mb-4 text-[15px] font-bold text-gray-900">So sánh gói</h2>
-          <ComparisonTable />
+        {/* Right: comparison + promote CTA */}
+        <div className="space-y-5">
+          <div>
+            <h2 className="m-0 mb-4 text-[15px] font-bold text-gray-900">So sánh gói</h2>
+            <ComparisonTable />
+          </div>
+
+          {/* Promote Center cross-sell */}
+          <div className="overflow-hidden rounded-2xl border border-amber-200/70 bg-amber-50">
+            <div className="px-5 py-4">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-amber-600">
+                Xúc tiến tin đăng
+              </p>
+              <p className="m-0 mt-1 text-[14px] font-semibold text-gray-900">
+                Tăng khả năng hiển thị với Boost & Spotlight
+              </p>
+              <p className="m-0 mt-1 text-[13px] text-gray-500">
+                Độc lập với gói thành viên — Boost 7 ngày cho tất cả người dùng.
+              </p>
+            </div>
+            <div className="border-t border-amber-200/60 bg-white/60 px-5 py-3">
+              <Link
+                href="/xuc-tien-tin-dang"
+                className="text-[13px] font-semibold text-amber-700 no-underline hover:underline"
+              >
+                Xem Promote Center →
+              </Link>
+            </div>
+          </div>
         </div>
 
       </div>

@@ -56,6 +56,7 @@ export function WizardStep3({
   const fileRef      = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const dragIdx      = useRef<number | null>(null)
+  const [activeDragIdx, setActiveDragIdx] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<number | null>(null)
 
   function addFiles(files: FileList) {
@@ -87,14 +88,16 @@ export function WizardStep3({
 
   // ── Drag-and-drop reorder ──────────────────────────────────────────────────
 
-  const onDragStart = useCallback((i: number) => { dragIdx.current = i }, [])
+  const onDragStart = useCallback((i: number) => { dragIdx.current = i; setActiveDragIdx(i) }, [])
   const onDragOver  = useCallback((e: React.DragEvent, i: number) => {
     e.preventDefault(); setDropTarget(i)
   }, [])
   const onDrop      = useCallback((e: React.DragEvent, targetIdx: number) => {
     e.preventDefault()
     const fromIdx = dragIdx.current
-    if (fromIdx === null || fromIdx === targetIdx) { dragIdx.current = null; setDropTarget(null); return }
+    if (fromIdx === null || fromIdx === targetIdx) {
+      dragIdx.current = null; setActiveDragIdx(null); setDropTarget(null); return
+    }
 
     const next = [...draft.images]
     const [moved] = next.splice(fromIdx, 1)
@@ -107,10 +110,11 @@ export function WizardStep3({
     else if (fromIdx > draft.cover_index && targetIdx <= draft.cover_index) newCover += 1
 
     dragIdx.current = null
+    setActiveDragIdx(null)
     setDropTarget(null)
     onChange({ images: next, cover_index: newCover })
   }, [draft.images, draft.cover_index, onChange])
-  const onDragEnd   = useCallback(() => { dragIdx.current = null; setDropTarget(null) }, [])
+  const onDragEnd   = useCallback(() => { dragIdx.current = null; setActiveDragIdx(null); setDropTarget(null) }, [])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -197,7 +201,7 @@ export function WizardStep3({
                   'group relative aspect-square overflow-hidden rounded-2xl',
                   'cursor-grab active:cursor-grabbing',
                   'transition-all duration-100',
-                  dropTarget === i && dragIdx.current !== i
+                  dropTarget === i && activeDragIdx !== i
                     ? 'ring-2 ring-vio-forest ring-offset-2 scale-95'
                     : '',
                   i === draft.cover_index

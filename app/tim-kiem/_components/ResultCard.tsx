@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import Image from 'next/image'
+import Link  from 'next/link'
 
 // ── DisplayHit — normalized across universalSearch and searchListings ──────────
 
@@ -41,12 +42,12 @@ function ListingCard({ hit }: { hit: DisplayHit }) {
       {/* Image area */}
       <div className="relative aspect-[3/2] overflow-hidden bg-[#F5F5F7]">
         {hit.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={hit.image_url}
             alt={hit.title}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-            loading="lazy"
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 to-[#E8EDE8]" aria-hidden="true" />
@@ -97,15 +98,20 @@ function StorefrontCard({ hit }: { hit: DisplayHit }) {
     >
       {/* Avatar */}
       <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white"
-        style={{ backgroundColor: avatarColor(hit.title) }}
-        aria-hidden="true"
+        className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl
+                   overflow-hidden text-sm font-bold text-white"
+        style={{ backgroundColor: hit.image_url ? undefined : avatarColor(hit.title) }}
       >
         {hit.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={hit.image_url} alt="" className="h-full w-full rounded-2xl object-cover" loading="lazy" />
+          <Image
+            src={hit.image_url}
+            alt=""
+            width={48}
+            height={48}
+            className="h-full w-full rounded-2xl object-cover"
+          />
         ) : (
-          initials(hit.title)
+          <span aria-hidden="true">{initials(hit.title)}</span>
         )}
       </div>
 

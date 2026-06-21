@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 // ── Base listing card ──────────────────────────────────────────────────────────
@@ -70,11 +71,12 @@ export function ListingCard({
       {/* Cover — 3:2 */}
       <div className="relative aspect-[3/2] overflow-hidden bg-gray-100 dark:bg-gray-800">
         {image_url ? (
-          <img
+          <Image
             src={image_url}
             alt={title}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-            loading="lazy"
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+            unoptimized
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

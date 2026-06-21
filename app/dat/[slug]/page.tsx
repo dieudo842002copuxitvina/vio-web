@@ -19,6 +19,14 @@ import { ListingQualityScore, type QualityInputs } from './_components/ListingQu
 import { InternalLinks }         from './_components/InternalLinks'
 import { AgriculturalSuitability } from './_components/AgriculturalSuitability'
 import { LandFactsSheet, type LandFactsSheetProps } from './_components/LandFactsSheet'
+import { CrossSellBanner }           from '@/app/_components/CrossSellBanner'
+import { AISummarySection }          from './_components/AISummarySection'
+import { CropRecommendationSection } from './_components/CropRecommendationSection'
+import { LegalReviewCTA }            from './_components/LegalReviewCTA'
+import type { SoilType, WaterSource } from '@/entities/listing/model/normalized-types'
+import { computeLandScore }          from '@/lib/ai/land-scoring'
+import { SharePanel }               from './_components/SharePanel'
+import { ExportOpportunities }       from './_components/ExportOpportunities'
 
 // ── generateMetadata ──────────────────────────────────────────────────────────
 
@@ -35,6 +43,10 @@ export async function generateMetadata(
   const desc     = listing.short_description
     ?? `${listing.price_text ?? 'Thương lượng'} · ${province}`
 
+  const enc    = encodeURIComponent
+  const ogUrl  = `/api/og?type=listing&title=${enc(listing.title)}&price=${enc(listing.price_text ?? '')}&province=${enc(province)}`
+  const ogImages = [{ url: ogUrl, width: 1200, height: 630, alt: title }]
+
   return {
     title,
     description: desc,
@@ -42,16 +54,14 @@ export async function generateMetadata(
     openGraph: {
       title,
       description: desc,
-      images: detail.coverImage
-        ? [{ url: detail.coverImage, width: 1200, height: 630, alt: title }]
-        : [],
-      type: 'website',
+      images:      ogImages,
+      type:        'article',
     },
     twitter: {
       card:        'summary_large_image',
       title,
       description: desc,
-      images:      detail.coverImage ? [detail.coverImage] : [],
+      images:      [ogUrl],
     },
   }
 }
@@ -116,7 +126,10 @@ export default async function DatDetailPage({ params }: PageProps) {
 
   if (!detail) notFound()
 
-  const { listing, media, coverImage, geo, profile, attrs } = detail
+  const {
+    listing, media, coverImage, geo, profile, attrs,
+    infrastructure, agriculture, completeness,
+  } = detail
 
   // ── Pro check + seller metrics (parallel) ─────────────────────────────────
   let isPro = false
@@ -218,18 +231,32 @@ export default async function DatDetailPage({ params }: PageProps) {
     isPro,
   }
 
-  // ── Quality score inputs ──────────────────────────────────────────────────
+  // ── Quality score inputs (legacy fallback for listings pre-migration 030) ──
   const qualityInputs: QualityInputs = {
-    mediaCount:      media.length,
-    hasPrice:        !!listing.price_text,
-    hasArea:         !!attrs['area_m2'],
-    hasLegalStatus:  !!legalRaw,
-    descriptionLen:  listing.description?.length ?? 0,
-    ownerVerified:   profile?.is_verified ?? false,
-    hasLocation:     !!locationText,
-    hasLandType:     !!landTypeKey,
-    hasContact:      !!listing.contact_phone,
+    mediaCount:        media.length,
+    hasPrice:          !!listing.price_text,
+    hasArea:           !!attrs['area_m2'],
+    hasLegalStatus:    !!legalRaw,
+    descriptionLen:    listing.description?.length ?? 0,
+    ownerVerified:     profile?.is_verified ?? false,
+    hasLocation:       !!locationText,
+    hasLandType:       !!landTypeKey,
+    hasContact:        !!listing.contact_phone,
+    // Normalized fields (present when listing has sub-entity rows)
+    hasGps:            !!(infrastructure?.lat && infrastructure?.lng),
+    hasRoadAccess:     infrastructure?.road_access ?? undefined,
+    hasWaterSource:    infrastructure?.water_source != null || undefined,
+    hasSoilType:       !!agriculture?.soil_type,
+    hasCurrentCrops:   !!(agriculture?.current_crops?.length),
+    hasCertifications: !!(agriculture?.certifications?.length),
+    mediaVideoCount:   media.filter(m => m.type === 'video').length,
   }
+
+  // ── AI features ──────────────────────────────────────────────────────────
+  const landScore = computeLandScore(detail)
+
+  // Crop recommendations are shown when we have soil + water data
+  const canShowCrops = !!agriculture?.soil_type
 
   // ── JSON-LD ───────────────────────────────────────────────────────────────
   const jsonLd       = buildJsonLd(listing, province, coverImage)
@@ -247,13 +274,11 @@ export default async function DatDetailPage({ params }: PageProps) {
       {/* JSON-LD — RealEstateListing */}
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* JSON-LD — BreadcrumbList */}
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
       />
 
@@ -321,6 +346,16 @@ export default async function DatDetailPage({ params }: PageProps) {
               )}
             </section>
 
+            {/* Share buttons with UTM attribution */}
+            <SharePanel
+              slug={listing.slug}
+              title={listing.title}
+              provinceSlug={geo.province?.slug ?? 'viet-nam'}
+            />
+
+            {/* AI summary — generated/cached Vietnamese marketing copy */}
+            <AISummarySection listingId={listing.id}/>
+
             {/* Section 3: Key facts */}
             {keyFactItems.length > 0 && <KeyFacts items={keyFactItems}/>}
 
@@ -335,6 +370,9 @@ export default async function DatDetailPage({ params }: PageProps) {
               listingId={listing.id}
             />
 
+            {/* Legal review CTA — paid verification service */}
+            <LegalReviewCTA listingId={listing.id} listingTitle={listing.title}/>
+
             {/* Section 6: Agricultural suitability */}
             {landTypeKey && (
               <AgriculturalSuitability
@@ -343,6 +381,26 @@ export default async function DatDetailPage({ params }: PageProps) {
                 provinceName={geo.province?.name ?? null}
               />
             )}
+
+            {/* Crop recommendations — when soil_type is known */}
+            {canShowCrops && (
+              <CropRecommendationSection
+                soilType={agriculture!.soil_type as SoilType}
+                waterSource={(infrastructure?.water_source ?? null) as WaterSource | null}
+                provinceName={geo.province?.name ?? ''}
+              />
+            )}
+
+            {/* Section 6b: Export opportunities for premium crops on this soil */}
+            {canShowCrops && agriculture?.soil_type && (
+              <ExportOpportunities
+                soilType={agriculture.soil_type as SoilType}
+                provinceSlug={geo.province?.slug ?? ''}
+              />
+            )}
+
+            {/* Section 6c: Cross-sell — VIO LOCAL / VIO EXPORT */}
+            <CrossSellBanner landType={landTypeKey} />
 
             {/* Section 7: Description */}
             {listing.description && (
@@ -362,8 +420,37 @@ export default async function DatDetailPage({ params }: PageProps) {
               </section>
             )}
 
-            {/* Section 8: Listing quality score (trust layer) */}
-            <ListingQualityScore inputs={qualityInputs}/>
+            {/* Section 8: Listing quality score (trust layer) + land score */}
+            <ListingQualityScore
+              persisted={completeness ?? undefined}
+              inputs={completeness ? undefined : qualityInputs}
+            />
+
+            {/* Land quality grade */}
+            <section>
+              {(() => {
+                const GRADE_COLOR: Record<string, string> = {
+                  A: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                  B: 'bg-blue-100   text-blue-700   border-blue-200',
+                  C: 'bg-amber-100  text-amber-700  border-amber-200',
+                  D: 'bg-neutral-100 text-neutral-500 border-neutral-200',
+                }
+                const color = GRADE_COLOR[landScore.grade] ?? GRADE_COLOR.D
+                return (
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[18px] font-black ${color}`}>
+                      {landScore.grade}
+                    </div>
+                    <div>
+                      <p className="m-0 text-[13px] font-semibold text-[#1d1d1f]">
+                        Điểm chất lượng đất: {landScore.total}/100
+                      </p>
+                      <p className="m-0 text-[12px] text-neutral-500">{landScore.summary_vi}</p>
+                    </div>
+                  </div>
+                )
+              })()}
+            </section>
 
             {/* Section 9: Seller profile */}
             <SellerProfile

@@ -129,7 +129,10 @@ export function WizardStep2({
 
   // Fetch districts when province changes
   useEffect(() => {
-    if (!draft.province_id) { setDistricts([]); setWards([]); return }
+    if (!draft.province_id) {
+      void Promise.resolve().then(() => { setDistricts([]); setWards([]) })
+      return
+    }
     supabase
       .from('districts')
       .select('id, name, slug')
@@ -144,7 +147,10 @@ export function WizardStep2({
 
   // Fetch wards when district changes
   useEffect(() => {
-    if (!draft.district_id) { setWards([]); return }
+    if (!draft.district_id) {
+      void Promise.resolve().then(() => setWards([]))
+      return
+    }
     supabase
       .from('wards')
       .select('id, name, slug')

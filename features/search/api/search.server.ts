@@ -319,7 +319,7 @@ export async function searchListings(
 // Trending land listings and new storefronts shown in the empty search state.
 
 const _getDiscoveryItems = unstable_cache(
-  async (context: DiscoveryContext, provinceId?: number): Promise<DiscoveryItem[]> => {
+  async (context: DiscoveryContext, _provinceId?: number): Promise<DiscoveryItem[]> => {
     const supabase = createCachedClient()
 
     if (context === 'trending' || context === 'popular') {

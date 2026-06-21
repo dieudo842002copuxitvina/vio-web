@@ -54,7 +54,7 @@ function zaloHref(phone: string | null, zaloUrl: string | null): string | null {
 // ── Inquiry modal ─────────────────────────────────────────────────────────────
 
 function InquiryModal({
-  listingTitle, listingId, onClose,
+  listingTitle, onClose,
 }: {
   listingTitle: string
   listingId:   string

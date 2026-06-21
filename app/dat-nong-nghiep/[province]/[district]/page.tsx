@@ -5,10 +5,50 @@ import { createClient }       from '@/lib/supabase/server'
 import { LandListingCard }    from '@/entities/listing'
 import { listingToLandCard }  from '@/entities/listing'
 import { getPageState, getRobotsMeta } from '@/lib/seo/thin-page'
-import { breadcrumbSchema, placeSchema, itemListSchema } from '@/lib/seo/schema'
-import { getLandListingsByProvinceSEO } from '@/features/seo/api/seo-feeds.server'
+import { breadcrumbSchema, placeSchema, itemListSchema, faqPageSchema } from '@/lib/seo/schema'
 import { seoRowToListing }              from '@/features/seo/api/seo-utils'
+import { getDistrictInternalLinks }     from '@/lib/seo/internal-links'
+import { getMarketStats }               from '@/lib/seo/statistics.server'
+import { buildDistrictFAQ }             from '@/lib/seo/faq'
+import { MarketStatsModule }            from '../_components/MarketStatsModule'
 import type { Province } from '@/lib/geo/types'
+
+// ── FAQ UI ─────────────────────────────────────────────────────────────────────
+
+function FAQModule({ items }: { items: Array<{ question: string; answer: string }> }) {
+  return (
+    <section aria-labelledby="faq-heading" className="mt-16">
+      <div className="mb-5">
+        <p className="text-[0.75rem] font-bold uppercase tracking-[0.14em] text-gray-400">
+          Giải đáp thắc mắc
+        </p>
+        <h2 id="faq-heading" className="mt-1 text-xl font-bold tracking-tight text-gray-900">
+          Câu hỏi thường gặp
+        </h2>
+      </div>
+      <div className="divide-y divide-gray-100 rounded-[20px] border border-gray-200 bg-white">
+        {items.map((item, i) => (
+          <details key={i} className="group px-5 py-4 open:pb-5">
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+              <span className="text-[0.9375rem] font-semibold text-gray-900 leading-snug">
+                {item.question}
+              </span>
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full
+                               bg-gray-100 text-gray-500 group-open:bg-green-100 group-open:text-green-700
+                               transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                     className="group-open:rotate-45 transition-transform duration-200">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                </svg>
+              </span>
+            </summary>
+            <p className="mt-3 text-[0.875rem] leading-relaxed text-gray-600">{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 export const revalidate = 3600
 
@@ -102,21 +142,32 @@ export default async function LandDistrictPage(
     redirect(`/dat-nong-nghiep/${province.slug}/${district.slug}`, 301 as never)
   }
 
-  // Fetch listings filtered by district_id
+  // Fetch listings + internal links + market stats in parallel
   const supabase = await createClient()
-  const { data: rows, count } = await supabase
-    .from('listings')
-    .select(
-      'id, slug, title, cover_url, price_text, location_text, land_type, is_featured, is_verified, published_at',
-      { count: 'exact' },
-    )
-    .eq('listing_type', 'land')
-    .eq('is_public', true)
-    .eq('moderation_status', 'approved')
-    .eq('district_id', district.id)
-    .order('is_featured', { ascending: false })
-    .order('published_at',  { ascending: false })
-    .limit(48)
+  const [{ data: rows, count }, linkGroups, stats] = await Promise.all([
+    supabase
+      .from('listings')
+      .select(
+        'id, slug, title, cover_url, price_text, location_text, land_type, is_featured, is_verified, published_at',
+        { count: 'exact' },
+      )
+      .eq('listing_type', 'land')
+      .eq('is_public', true)
+      .eq('moderation_status', 'approved')
+      .eq('district_id', district.id)
+      .order('is_featured', { ascending: false })
+      .order('published_at',  { ascending: false })
+      .limit(48),
+
+    getDistrictInternalLinks(
+      district.id,
+      district.slug,
+      province.slug,
+      province.name,
+    ),
+
+    getMarketStats({ districtId: Number(district.id) }),
+  ])
 
   const total     = count ?? 0
   const items     = rows ?? []
@@ -125,8 +176,10 @@ export default async function LandDistrictPage(
   const robots    = getRobotsMeta(pageState)
 
   const displayCount = total.toLocaleString('vi-VN')
+  const faqItems     = buildDistrictFAQ(district.name, province.name)
 
   // ── Structured data ────────────────────────────────────────────────────────
+  const schemaFaq        = faqPageSchema(faqItems)
   const schemaBreadcrumb = breadcrumbSchema([
     { name: 'Trang chủ',        href: '/' },
     { name: 'Đất nông nghiệp',  href: '/dat-nong-nghiep' },
@@ -152,14 +205,12 @@ export default async function LandDistrictPage(
     <>
       <meta name="robots" content={robots} />
 
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaBreadcrumb) }} />
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaPlace) }} />
       {schemaItems && (
-        // eslint-disable-next-line react/no-danger
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaItems) }} />
       )}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaFaq) }} />
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-gray-200/60 bg-[#FBFBFD]">
@@ -209,6 +260,13 @@ export default async function LandDistrictPage(
             Mua bán và cho thuê đất nông nghiệp tại {district.name}, {province.name}.
             Kết nối trực tiếp với chủ đất — không qua môi giới.
           </p>
+
+          {/* Market statistics */}
+          {stats.listing_count > 0 && (
+            <div className="mt-5">
+              <MarketStatsModule stats={stats} />
+            </div>
+          )}
 
           {/* Land type quick filters */}
           <div className="mt-6 flex flex-wrap gap-2">
@@ -295,25 +353,35 @@ export default async function LandDistrictPage(
             </div>
           )}
 
-          {/* ── Up & cross navigation ── */}
-          <div className="mt-12 flex flex-wrap gap-3">
-            <Link
-              href={`/dat-nong-nghiep/${province.slug}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200
-                         bg-white px-4 py-2 text-[0.875rem] font-medium text-gray-600
-                         no-underline transition-colors hover:bg-gray-50"
-            >
-              ← Tất cả đất tại {province.name}
-            </Link>
-            <Link
-              href="/dat-nong-nghiep"
-              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200
-                         bg-white px-4 py-2 text-[0.875rem] font-medium text-gray-600
-                         no-underline transition-colors hover:bg-gray-50"
-            >
-              Tất cả tỉnh thành
-            </Link>
-          </div>
+          {/* ── Internal linking graph ── */}
+          {linkGroups.length > 0 && (
+            <div className="mt-12 space-y-8">
+              {linkGroups.map(group => (
+                <div key={group.heading}>
+                  <h2 className="mb-3 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-gray-400">
+                    {group.heading}
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {group.links.map(link => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5
+                                   text-[0.8125rem] font-medium text-gray-600 no-underline
+                                   transition-colors hover:border-green-300 hover:bg-green-50
+                                   hover:text-green-700"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── FAQ ── */}
+          <FAQModule items={faqItems} />
 
           {/* ── Bottom CTA ── */}
           <div className="relative mt-12 overflow-hidden rounded-[28px] bg-[#F5F5F7]
