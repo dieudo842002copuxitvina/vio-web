@@ -6,10 +6,8 @@ import { useRouter } from 'next/navigation'
 
 export function PaymentActionsClient({
   requestId,
-  adminId,
 }: {
   requestId: string
-  adminId:   string
 }) {
   const [done,      setDone]     = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -23,7 +21,7 @@ export function PaymentActionsClient({
 
   async function handleConfirm() {
     start(async () => {
-      const r = await confirmPayment(requestId, adminId)
+      const r = await confirmPayment(requestId)
       if (r.ok) { setDone(true); router.refresh() }
     })
   }
@@ -31,7 +29,7 @@ export function PaymentActionsClient({
   async function handleReject() {
     if (!reason.trim()) return
     start(async () => {
-      const r = await rejectPayment(requestId, adminId, reason)
+      const r = await rejectPayment(requestId, reason)
       if (r.ok) { setDone(true); router.refresh() }
       setRejectOpen(false)
     })

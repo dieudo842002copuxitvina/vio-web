@@ -26,6 +26,12 @@ export const blogSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  category: z
+    .string()
+    .max(50, 'Tối đa 50 ký tự')
+    .optional()
+    .or(z.literal('')),
+
   status: z.enum(['draft', 'published']),
 })
 

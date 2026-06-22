@@ -10,6 +10,7 @@ import { TrendingSearches }       from '@/features/recommendation/components/Tre
 import { LandListingCard }        from '@/entities/listing'
 import { FilterSidebar }          from './_components/FilterSidebar'
 import { FilterMobileSheet }      from './_components/FilterMobileSheet'
+import { SortSelectClient }       from './_components/SortSelectClient'
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
@@ -36,32 +37,7 @@ function countActiveFilters(sp: Record<string, string | string[]>): number {
   }).length
 }
 
-// ── Sort selector (client island via form + GET) ──────────────────────────────
 
-function SortSelect({ current }: { current: string }) {
-  const opts = [
-    { value: 'newest',     label: 'Mới nhất'     },
-    { value: 'price_asc',  label: 'Giá thấp nhất'},
-    { value: 'price_desc', label: 'Giá cao nhất' },
-  ]
-  return (
-    <select
-      name="sap_xep"
-      defaultValue={current || 'newest'}
-      className="rounded-[10px] border border-[rgba(60,60,67,0.2)] bg-white px-3 py-1.5 text-[13px] font-medium text-[#1d1d1f] focus:border-[#1A4D2E] focus:outline-none"
-      onChange={e => {
-        const url = new URL(window.location.href)
-        url.searchParams.set('sap_xep', e.target.value)
-        url.searchParams.delete('trang')
-        window.location.href = url.toString()
-      }}
-    >
-      {opts.map(o => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  )
-}
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
@@ -199,7 +175,7 @@ export default async function LandIndexPage({ searchParams }: PageProps) {
             <Suspense>
               <FilterMobileSheet provinces={provinces} activeCount={activeCount} />
             </Suspense>
-            <SortSelect current={sp.sap_xep ?? ''} />
+            <SortSelectClient current={sp.sap_xep ?? ''} />
           </div>
 
           {/* Desktop: results count + sort */}
@@ -207,7 +183,7 @@ export default async function LandIndexPage({ searchParams }: PageProps) {
             <p className="text-[14px] text-[#6e6e73]">
               {total > 0 ? `${total.toLocaleString('vi-VN')} kết quả` : ''}
             </p>
-            <SortSelect current={sp.sap_xep ?? ''} />
+            <SortSelectClient current={sp.sap_xep ?? ''} />
           </div>
 
           {/* Grid */}

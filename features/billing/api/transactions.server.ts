@@ -97,8 +97,20 @@ export async function markPendingConfirm(
 
 export async function confirmPayment(
   requestId: string,
-  adminId:   string,
 ): Promise<{ ok: boolean; error?: string }> {
+  // Re-verify caller from session — do NOT trust any client-supplied adminId
+  const callerClient = await createClient()
+  const { data: { user } } = await callerClient.auth.getUser()
+  if (!user) return { ok: false, error: 'Không xác thực.' }
+
+  const { data: profile } = await callerClient
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+  if (!profile?.is_admin) return { ok: false, error: 'Không có quyền admin.' }
+
+  const verifiedAdminId = user.id
   const supabase = await createAdminClient()
 
   // Fetch the request
@@ -132,7 +144,7 @@ export async function confirmPayment(
       break
     }
     case 'pro_monthly': {
-      const res = await grantPro(r.user_id, adminId, product.days)
+      const res = await grantPro(r.user_id, verifiedAdminId, product.days)
       if (!res.ok) activationError = res.error
       break
     }
@@ -165,13 +177,13 @@ export async function confirmPayment(
     .update({
       status:        'completed',
       completed_at:  new Date().toISOString(),
-      confirmed_by:  adminId,
+      confirmed_by:  verifiedAdminId,
     })
     .eq('id', requestId)
 
   if (updateErr) return { ok: false, error: updateErr.message }
 
-  await writeAuditLog('payment.confirm', 'payment_request', requestId, adminId, {
+  await writeAuditLog('payment.confirm', 'payment_request', requestId, verifiedAdminId, {
     product_type: r.product_type,
     amount_vnd:   r.amount_vnd,
     user_id:      r.user_id,
@@ -186,9 +198,21 @@ export async function confirmPayment(
 
 export async function rejectPayment(
   requestId: string,
-  adminId:   string,
   reason:    string,
 ): Promise<{ ok: boolean; error?: string }> {
+  // Re-verify caller from session — same guard as confirmPayment
+  const callerClient = await createClient()
+  const { data: { user } } = await callerClient.auth.getUser()
+  if (!user) return { ok: false, error: 'Không xác thực.' }
+
+  const { data: profile } = await callerClient
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+  if (!profile?.is_admin) return { ok: false, error: 'Không có quyền admin.' }
+
+  const verifiedAdminId = user.id
   const supabase = await createAdminClient()
 
   const { error } = await supabase
@@ -199,7 +223,7 @@ export async function rejectPayment(
 
   if (error) return { ok: false, error: error.message }
 
-  await writeAuditLog('payment.reject', 'payment_request', requestId, adminId, { reason })
+  await writeAuditLog('payment.reject', 'payment_request', requestId, verifiedAdminId, { reason })
   revalidatePath('/admin/payments')
   return { ok: true }
 }

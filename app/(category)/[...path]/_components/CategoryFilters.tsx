@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useRef,
+  useEffect,
 } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -216,6 +217,12 @@ function RangeFilter({
   const [maxVal, setMaxVal] = useState(initMax)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // ✅ BUG FIX (FILTER-01): Sync local state when URL changes externally.
+  // This handles "Xóa tất cả" clearing the URL params — without this fix,
+  // the input still shows old values even though the URL is clean.
+  useEffect(() => { setMinVal(initMin) }, [initMin])
+  useEffect(() => { setMaxVal(initMax) }, [initMax])
+
   const pushRange = useCallback((min: string, max: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -226,6 +233,9 @@ function RangeFilter({
       router.push(url)
     }, 600)
   }, [router, pathname, searchParams, minKey, maxKey])
+
+  // cleanup debounce on unmount
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
   const hasValue = initMin || initMax
 

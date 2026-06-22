@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'picsum.photos',
       },
+      // Unsplash — placeholder province/hero images (replace with local assets before launch)
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      // VietQR CDN — dynamic QR code images in checkout modal
+      {
+        protocol: 'https',
+        hostname: 'img.vietqr.io',
+      },
     ],
     // Formats ordered by preference; AVIF compresses ~50 % better than WebP.
     formats: ['image/avif', 'image/webp'],

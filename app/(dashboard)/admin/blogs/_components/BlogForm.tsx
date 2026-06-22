@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter }                from 'next/navigation'
-import { createBlog, updateBlog }   from '@/features/blog/api/blog.server'
-import { blogSchema }               from '@/features/blog/schemas/blog.schema'
-import type { BlogRow }             from '@/features/blog/api/blog.server'
+import { useState, useTransition, useRef } from 'react'
+import { useRouter }                        from 'next/navigation'
+import { createBlog, updateBlog, uploadThumbnail } from '@/features/blog/api/blog.server'
+import { blogSchema }                       from '@/features/blog/schemas/blog.schema'
+import { TiptapEditor }                     from './TiptapEditor'
+import type { BlogRow }                     from '@/features/blog/api/blog.server'
 
 // ── Vietnamese → slug ─────────────────────────────────────────────────────────
 
@@ -42,13 +43,31 @@ function FieldError({ msg }: { msg?: string }) {
   return <p className="mt-1 text-[12px] text-red-500">{msg}</p>
 }
 
-function Label({ htmlFor, children, required }: { htmlFor: string; children: React.ReactNode; required?: boolean }) {
+function Label({
+  htmlFor, children, required,
+}: {
+  htmlFor: string
+  children: React.ReactNode
+  required?: boolean
+}) {
   return (
     <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-semibold text-gray-700">
-      {children}{required && <span className="ml-0.5 text-red-400">*</span>}
+      {children}
+      {required && <span className="ml-0.5 text-red-400">*</span>}
     </label>
   )
 }
+
+// ── Category options ──────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  'Kiến thức đất đai',
+  'Thị trường',
+  'Pháp lý',
+  'Nông nghiệp',
+  'Tin tức',
+  'Hướng dẫn',
+] as const
 
 // ── BlogForm ──────────────────────────────────────────────────────────────────
 
@@ -58,15 +77,21 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
   const [title,        setTitle]        = useState(blog?.title         ?? '')
   const [slug,         setSlug]         = useState(blog?.slug          ?? '')
   const [slugEdited,   setSlugEdited]   = useState(isEdit)
+  const [category,     setCategory]     = useState(blog?.category      ?? '')
   const [excerpt,      setExcerpt]      = useState(blog?.excerpt       ?? '')
   const [content,      setContent]      = useState(blog?.content       ?? '')
   const [thumbnailUrl, setThumbnailUrl] = useState(blog?.thumbnail_url ?? '')
+  const [uploading,    setUploading]    = useState(false)
+  const [uploadError,  setUploadError]  = useState<string | null>(null)
   const [errors,       setErrors]       = useState<Record<string, string>>({})
   const [serverError,  setServerError]  = useState<string | null>(null)
   const [pendingBtn,   setPendingBtn]   = useState<'draft' | 'published' | null>(null)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isPending, start] = useTransition()
   const router = useRouter()
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   function handleTitleChange(val: string) {
     setTitle(val)
@@ -78,6 +103,20 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
     setSlugEdited(true)
   }
 
+  async function handleThumbnailFile(file: File | undefined) {
+    if (!file) return
+    setUploadError(null)
+    setUploading(true)
+
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await uploadThumbnail(fd)
+
+    setUploading(false)
+    if (!res.ok) { setUploadError(res.error ?? 'Upload thất bại.'); return }
+    setThumbnailUrl(res.url ?? '')
+  }
+
   async function handleSubmit(status: 'draft' | 'published') {
     const parsed = blogSchema.safeParse({
       title,
@@ -85,6 +124,7 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
       excerpt:       excerpt       || undefined,
       content:       content       || undefined,
       thumbnail_url: thumbnailUrl  || undefined,
+      category:      category      || undefined,
       status,
     })
 
@@ -103,14 +143,9 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
     setPendingBtn(status)
 
     start(async () => {
-      let res: { ok: boolean; error?: string }
-
-      if (isEdit && blog) {
-        res = await updateBlog(blog.id, parsed.data)
-      } else {
-        const createRes = await createBlog(parsed.data)
-        res = createRes
-      }
+      const res = isEdit && blog
+        ? await updateBlog(blog.id, parsed.data)
+        : await createBlog(parsed.data)
 
       setPendingBtn(null)
 
@@ -124,14 +159,13 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
     })
   }
 
-  const isSubmitting = isPending
+  const isSubmitting = isPending || uploading
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <form
-      onSubmit={e => e.preventDefault()}
-      className="space-y-5"
-      noValidate
-    >
+    <form onSubmit={e => e.preventDefault()} className="space-y-6" noValidate>
+
       {/* Title */}
       <div>
         <Label htmlFor="title" required>Tiêu đề bài viết</Label>
@@ -151,47 +185,135 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
         <FieldError msg={errors.title} />
       </div>
 
-      {/* Slug */}
-      <div>
-        <Label htmlFor="slug" required>Slug (URL)</Label>
-        <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 focus-within:border-vio-forest focus-within:bg-white focus-within:ring-2 focus-within:ring-vio-forest/15">
-          <span className="shrink-0 text-[13px] text-gray-400">/blog/</span>
-          <input
-            id="slug"
-            type="text"
-            value={slug}
-            onChange={e => handleSlugChange(e.target.value)}
-            placeholder="xu-huong-dat-nong-nghiep-2025"
-            className={[
-              'min-w-0 flex-1 bg-transparent text-[14px] text-gray-900 outline-none placeholder-gray-400',
-              errors.slug ? 'text-red-600' : '',
-            ].join(' ')}
-          />
+      {/* Two-column: Slug + Category */}
+      <div className="grid gap-4 sm:grid-cols-2">
+
+        {/* Slug */}
+        <div>
+          <Label htmlFor="slug" required>Slug (URL)</Label>
+          <div className={[
+            'flex items-center gap-2 rounded-2xl border px-4 py-3',
+            'bg-gray-50 transition-all',
+            'focus-within:border-vio-forest focus-within:bg-white focus-within:ring-2 focus-within:ring-vio-forest/15',
+            errors.slug ? 'border-red-400' : 'border-gray-200',
+          ].join(' ')}>
+            <span className="shrink-0 text-[13px] text-gray-400">/blog/</span>
+            <input
+              id="slug"
+              type="text"
+              value={slug}
+              onChange={e => handleSlugChange(e.target.value)}
+              placeholder="xu-huong-dat-nong-nghiep-2025"
+              className={[
+                'min-w-0 flex-1 bg-transparent text-[14px] text-gray-900 outline-none placeholder-gray-400',
+                errors.slug ? 'text-red-600' : '',
+              ].join(' ')}
+            />
+          </div>
+          <FieldError msg={errors.slug} />
         </div>
-        <FieldError msg={errors.slug} />
+
+        {/* Category */}
+        <div>
+          <Label htmlFor="category">Chuyên mục</Label>
+          <select
+            id="category"
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+            className={[
+              'block w-full appearance-none rounded-2xl border bg-white px-4 py-3 text-[14px] text-gray-900',
+              'outline-none transition-all cursor-pointer',
+              'focus:border-vio-forest focus:ring-2 focus:ring-vio-forest/15',
+              errors.category ? 'border-red-400' : 'border-gray-200',
+            ].join(' ')}
+          >
+            <option value="">— Chọn chuyên mục —</option>
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <FieldError msg={errors.category} />
+        </div>
       </div>
 
-      {/* Thumbnail URL */}
+      {/* Thumbnail upload */}
       <div>
-        <Label htmlFor="thumbnail_url">URL ảnh đại diện</Label>
+        <Label htmlFor="thumbnail-file">Ảnh đại diện</Label>
+
+        {/* Hidden real file input */}
         <input
-          id="thumbnail_url"
-          type="url"
-          value={thumbnailUrl}
-          onChange={e => setThumbnailUrl(e.target.value)}
-          placeholder="https://example.com/anh-bai-viet.jpg"
-          className={[
-            'block w-full rounded-2xl border bg-white px-4 py-3 text-[14px] text-gray-900',
-            'placeholder-gray-400 outline-none transition-all',
-            'focus:border-vio-forest focus:ring-2 focus:ring-vio-forest/15',
-            errors.thumbnail_url ? 'border-red-400' : 'border-gray-200',
-          ].join(' ')}
+          ref={fileInputRef}
+          id="thumbnail-file"
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={e => handleThumbnailFile(e.target.files?.[0])}
         />
-        {thumbnailUrl && !errors.thumbnail_url && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={thumbnailUrl} alt="Preview" className="mt-2 h-28 w-full rounded-xl object-cover" />
+
+        {thumbnailUrl ? (
+          /* Preview with replace/remove actions */
+          <div className="group relative overflow-hidden rounded-2xl border border-gray-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={thumbnailUrl}
+              alt="Ảnh đại diện"
+              className="h-40 w-full object-cover"
+            />
+            <div className="absolute inset-0 flex items-center justify-center gap-2
+                            bg-black/0 opacity-0 transition-all
+                            group-hover:bg-black/30 group-hover:opacity-100">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 shadow"
+              >
+                Đổi ảnh
+              </button>
+              <button
+                type="button"
+                onClick={() => { setThumbnailUrl(''); setUploadError(null) }}
+                className="rounded-full bg-red-500 px-3 py-1.5 text-[12px] font-semibold text-white shadow"
+              >
+                Xoá
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Drop zone / click to upload */
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className={[
+              'flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed',
+              'py-8 text-center transition-colors hover:border-vio-forest hover:bg-vio-forest/5',
+              uploading ? 'cursor-wait opacity-60' : 'cursor-pointer',
+              errors.thumbnail_url ? 'border-red-300' : 'border-gray-200',
+            ].join(' ')}
+          >
+            {uploading ? (
+              <svg className="h-6 w-6 animate-spin text-vio-forest" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity=".25"/>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-gray-300" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M3 15l5-5 4 4 3-3 5 5" stroke="currentColor" strokeWidth="1.5"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" opacity=".5"/>
+              </svg>
+            )}
+            <p className="text-[13px] text-gray-500">
+              {uploading ? 'Đang tải ảnh lên…' : 'Nhấn để chọn ảnh (JPG, PNG, WebP — tối đa 5 MB)'}
+            </p>
+          </button>
         )}
-        <FieldError msg={errors.thumbnail_url} />
+
+        {uploadError && (
+          <p className="mt-1 text-[12px] text-red-500">{uploadError}</p>
+        )}
       </div>
 
       {/* Excerpt */}
@@ -212,30 +334,18 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
         />
         <div className="mt-1 flex justify-between">
           <FieldError msg={errors.excerpt} />
-          <span className="text-[11px] text-gray-400">{excerpt.length} / 500</span>
+          <span className="ml-auto text-[11px] text-gray-400">{excerpt.length} / 500</span>
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — Rich Text Editor */}
       <div>
-        <Label htmlFor="content">Nội dung bài viết (HTML)</Label>
-        <textarea
-          id="content"
-          rows={20}
+        <Label htmlFor="content">Nội dung bài viết</Label>
+        <TiptapEditor
           value={content}
-          onChange={e => setContent(e.target.value)}
-          placeholder="<h2>Tiêu đề phụ</h2>&#10;<p>Nội dung đoạn văn...</p>"
-          spellCheck={false}
-          className={[
-            'block w-full rounded-2xl border bg-white px-4 py-3 font-mono text-[13px] leading-relaxed text-gray-900',
-            'placeholder-gray-400 outline-none transition-all',
-            'focus:border-vio-forest focus:ring-2 focus:ring-vio-forest/15',
-            errors.content ? 'border-red-400' : 'border-gray-200',
-          ].join(' ')}
+          onChange={setContent}
+          hasError={Boolean(errors.content)}
         />
-        <p className="mt-1.5 text-[11px] text-gray-400">
-          Nhập HTML trực tiếp. Rich Text Editor sẽ được tích hợp sau.
-        </p>
         <FieldError msg={errors.content} />
       </div>
 
@@ -256,12 +366,7 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
                      text-[14px] font-semibold text-gray-700 transition-colors
                      hover:bg-gray-50 disabled:opacity-50"
         >
-          {pendingBtn === 'draft' && (
-            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-            </svg>
-          )}
+          {pendingBtn === 'draft' && <Spinner />}
           {pendingBtn === 'draft' ? 'Đang lưu…' : 'Lưu bản nháp'}
         </button>
 
@@ -273,12 +378,7 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
                      text-[14px] font-bold text-white transition-opacity
                      hover:opacity-90 disabled:opacity-50"
         >
-          {pendingBtn === 'published' && (
-            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-            </svg>
-          )}
+          {pendingBtn === 'published' && <Spinner />}
           {pendingBtn === 'published' ? 'Đang xuất bản…' : 'Xuất bản'}
         </button>
 
@@ -290,5 +390,14 @@ export function BlogForm({ blog }: { blog?: BlogRow }) {
         </a>
       </div>
     </form>
+  )
+}
+
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity=".25"/>
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+    </svg>
   )
 }

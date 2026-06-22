@@ -124,6 +124,10 @@ export async function resetPasswordAction(email: string): Promise<ActionResult> 
 // (i.e. after clicking the reset link from their email).
 
 export async function updatePasswordAction(password: string): Promise<ActionResult> {
+  const ip = await getClientIP()
+  if (_check(`update-pw:${ip}`, 5, 300_000))
+    return { ok: false, error: 'Quá nhiều lần thử. Vui lòng đợi 5 phút rồi thử lại.' }
+
   const supabase = await createClient()
   const { error } = await supabase.auth.updateUser({ password })
 

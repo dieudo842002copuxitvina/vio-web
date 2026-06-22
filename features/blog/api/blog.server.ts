@@ -15,6 +15,7 @@ export interface BlogRow {
   content:       string | null
   thumbnail_url: string | null
   author_id:     string | null
+  category:      string | null
   status:        'draft' | 'published'
   published_at:  string | null
   created_at:    string
@@ -130,9 +131,10 @@ export async function createBlog(
     .insert({
       title:         data.title,
       slug:          data.slug,
-      excerpt:       data.excerpt   || null,
-      content:       data.content   || null,
+      excerpt:       data.excerpt       || null,
+      content:       data.content       || null,
       thumbnail_url: data.thumbnail_url || null,
+      category:      data.category      || null,
       author_id:     guard.userId,
       status:        data.status,
       published_at:  data.status === 'published' ? now : null,
@@ -174,9 +176,10 @@ export async function updateBlog(
     .update({
       title:         data.title,
       slug:          data.slug,
-      excerpt:       data.excerpt   || null,
-      content:       data.content   || null,
+      excerpt:       data.excerpt       || null,
+      content:       data.content       || null,
       thumbnail_url: data.thumbnail_url || null,
+      category:      data.category      || null,
       status:        data.status,
       published_at:  nowPublished && !wasPublished
                        ? new Date().toISOString()
@@ -218,6 +221,36 @@ export async function deleteBlog(id: string): Promise<{ ok: boolean; error?: str
   if (current?.slug) revalidatePath(`/blog/${current.slug}`)
 
   return { ok: true }
+}
+
+// ── Storage: thumbnail upload ─────────────────────────────────────────────────
+
+export async function uploadThumbnail(
+  formData: FormData,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const guard = await requireAdmin()
+  if ('error' in guard) return { ok: false, error: guard.error }
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0)
+    return { ok: false, error: 'Không tìm thấy file ảnh.' }
+  if (!file.type.startsWith('image/'))
+    return { ok: false, error: 'Chỉ chấp nhận file ảnh (JPG, PNG, WebP…).' }
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: 'Ảnh tối đa 5 MB.' }
+
+  const supabase = await createAdminClient()
+  const ext  = file.name.split('.').pop() ?? 'jpg'
+  const path = `thumbnails/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('blog-images')
+    .upload(path, file, { contentType: file.type, upsert: false })
+
+  if (error) return { ok: false, error: error.message }
+
+  const { data } = supabase.storage.from('blog-images').getPublicUrl(path)
+  return { ok: true, url: data.publicUrl }
 }
 
 export async function toggleBlogStatus(id: string): Promise<{ ok: boolean; error?: string }> {

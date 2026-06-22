@@ -115,17 +115,20 @@ export function getCategoryChildren(parentId: number): Promise<Category[]> {
 const _getCategorySiblings = unstable_cache(
   async (parentId: number | null, excludeId: number): Promise<Category[]> => {
     const supabase = await createClient()
-    const query = supabase
+    let query = supabase
       .from('categories')
       .select('*')
       .eq('is_active', true)
       .neq('id', excludeId)
       .order('sort_order', { ascending: true })
 
+    // ✅ BUG FIX (FILTER-03): Supabase query builder is IMMUTABLE.
+    // Each method returns a NEW instance — must reassign, not call in-place.
+    // Previous code: query.eq(...) → result discarded → no filter applied!
     if (parentId != null) {
-      query.eq('parent_id', parentId)
+      query = query.eq('parent_id', parentId)
     } else {
-      query.is('parent_id', null)
+      query = query.is('parent_id', null)
     }
 
     const { data } = await query

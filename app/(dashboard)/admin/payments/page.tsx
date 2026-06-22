@@ -1,6 +1,5 @@
 import type { Metadata }     from 'next'
 import Link                   from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { getPaymentRequests } from '@/features/billing/api/transactions.server'
 import { PRODUCT_CATALOG, BANK_INFO } from '@/features/billing/api/billing-constants'
 import { PaymentActionsClient } from './_components/PaymentActionsClient'
@@ -39,9 +38,6 @@ export default async function AdminPaymentsPage({
   const params   = await searchParams
   const status   = params.status ?? 'pending_confirm'
   const page     = Math.max(1, parseInt(params.page ?? '1', 10))
-
-  const supabase   = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
   const { items, total } = await getPaymentRequests(status || undefined, page, 30)
   const totalPages = Math.ceil(total / 30)
@@ -138,7 +134,6 @@ export default async function AdminPaymentsPage({
                     {(req.status === 'pending' || req.status === 'pending_confirm') && (
                       <PaymentActionsClient
                         requestId={req.id}
-                        adminId={user?.id ?? ''}
                       />
                     )}
                   </td>

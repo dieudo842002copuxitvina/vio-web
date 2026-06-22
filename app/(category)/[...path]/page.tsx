@@ -1,4 +1,4 @@
-import { notFound }             from 'next/navigation'
+import { notFound, redirect }    from 'next/navigation'
 import { Suspense }              from 'react'
 import type { Metadata }         from 'next'
 import Link                      from 'next/link'
@@ -523,7 +523,6 @@ export default async function CategoryPage({
   if (!ctx) {
     const canonical = await resolveCategoryAlias(fullSlug)
     if (canonical) {
-      const { redirect } = await import('next/navigation')
       redirect(`/${canonical}`)
     }
     notFound()
