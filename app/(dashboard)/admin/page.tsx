@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title:  'Admin OS — VIO AGRI',
   robots: { index: false, follow: false },
 }
-export const revalidate = 60
+export const revalidate = 0 // Tắt cache — admin cần dữ liệu realtime
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

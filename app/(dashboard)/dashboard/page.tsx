@@ -1,5 +1,6 @@
 import type { Metadata }        from 'next'
 import Link                      from 'next/link'
+import { redirect }              from 'next/navigation'
 import { createClient }          from '@/lib/supabase/server'
 import { getActiveSubscription } from '@/features/billing/api/subscription.server'
 
@@ -92,7 +93,8 @@ function QuickLink({ href, label, icon }: { href: string; label: string; icon: R
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  // Lớp bảo vệ thứ hai sau middleware — không dùng return null (gây màn hình trắng)
+  if (!user) redirect('/dang-nhap')
 
   const displayName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Bạn'
 

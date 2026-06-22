@@ -1,59 +1,51 @@
-import Link from 'next/link'
+import Image from 'next/image'
+import Link  from 'next/link'
 
 // ── Province data ──────────────────────────────────────────────────────────────
 //
-// Unsplash images are temporary royalty-free placeholders.
-// Replace with actual provincial photography before launch.
-// Image dimensions: 600 × 450 (4:3) at 80% quality.
+// imageUrl trỏ tới ảnh local trong thư mục public/images/.
+// Cách thêm ảnh: đặt file vào public/images/ với tên đúng như bên dưới,
+// ví dụ: public/images/tinh-lam-dong.jpg (600×450, tỉ lệ 4:3, ≤150 kB).
+//
+// Nếu chưa có ảnh thực, thẻ <Image> sẽ hiển thị ảnh placeholder tạm thời
+// nhờ thuộc tính onError bên dưới.
 
 const PROVINCES = [
   {
     slug:     'lam-dong',
     name:     'Lâm Đồng',
     region:   'Tây Nguyên',
-    imageUrl: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=600&q=75',
+    imageUrl: '/images/tinh-lam-dong.jpg',
   },
   {
     slug:     'dak-lak',
     name:     'Đắk Lắk',
     region:   'Tây Nguyên',
-    imageUrl: 'https://images.unsplash.com/photo-1520637836993-5ebe81f8d8b8?auto=format&fit=crop&w=600&q=75',
+    imageUrl: '/images/tinh-dak-lak.jpg',
   },
   {
     slug:     'gia-lai',
     name:     'Gia Lai',
     region:   'Tây Nguyên',
-    imageUrl: 'https://images.unsplash.com/photo-1536054590849-a48eae5af3b6?auto=format&fit=crop&w=600&q=75',
+    imageUrl: '/images/tinh-gia-lai.jpg',
   },
   {
     slug:     'dong-nai',
     name:     'Đồng Nai',
     region:   'Đông Nam Bộ',
-    imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=600&q=75',
+    imageUrl: '/images/tinh-dong-nai.jpg',
   },
   {
     slug:     'binh-phuoc',
     name:     'Bình Phước',
     region:   'Đông Nam Bộ',
-    imageUrl: 'https://images.unsplash.com/photo-1542838132-f7e8bc44d2c3?auto=format&fit=crop&w=600&q=75',
+    imageUrl: '/images/tinh-binh-phuoc.jpg',
   },
   {
     slug:     'tay-ninh',
     name:     'Tây Ninh',
     region:   'Đông Nam Bộ',
-    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=75',
-  },
-  {
-    slug:     'an-giang',
-    name:     'An Giang',
-    region:   'Đồng bằng sông Cửu Long',
-    imageUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=600&q=75',
-  },
-  {
-    slug:     'long-an',
-    name:     'Long An',
-    region:   'Đồng bằng sông Cửu Long',
-    imageUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=600&q=75',
+    imageUrl: '/images/tinh-tay-ninh.jpg',
   },
 ] as const
 
@@ -72,13 +64,17 @@ function ProvinceCard({
       aria-label={`Xem đất tại ${name}`}
     >
       {/* Photo */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={imageUrl}
         alt={`Vùng đất nông nghiệp ${name}`}
-        loading="lazy"
-        className="absolute inset-0 h-full w-full object-cover
-                   transition-transform duration-500 group-hover:scale-[1.05]"
+        fill
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+        className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+        // fallback: nếu file local chưa có, dùng màu nền xám thay vì ảnh vỡ
+        onError={(e) => {
+          const img = e.currentTarget
+          img.style.display = 'none'
+        }}
       />
 
       {/* Gradient overlay */}

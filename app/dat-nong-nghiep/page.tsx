@@ -39,6 +39,34 @@ function countActiveFilters(sp: Record<string, string | string[]>): number {
 
 
 
+// ── Error state ──────────────────────────────────────────────────────────────
+
+function ErrorState() {
+  return (
+    <div className="flex flex-col items-center gap-3 py-20 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF3F3]">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <circle cx="14" cy="14" r="10" stroke="#FF3B30" strokeWidth="1.8"/>
+          <path d="M14 9v6" stroke="#FF3B30" strokeWidth="1.8" strokeLinecap="round"/>
+          <circle cx="14" cy="19" r="1" fill="#FF3B30"/>
+        </svg>
+      </div>
+      <p className="text-[17px] font-semibold text-[#1d1d1f]">
+        Không thể tải danh sách
+      </p>
+      <p className="max-w-[300px] text-[14px] text-[#6e6e73]">
+        Tạm thời chưa thể tải danh sách bất động sản. Vui lòng thử lại sau.
+      </p>
+      <Link
+        href="/dat-nong-nghiep"
+        className="mt-2 rounded-full bg-[#1A4D2E] px-5 py-2.5 text-[14px] font-semibold text-white"
+      >
+        Thử lại
+      </Link>
+    </div>
+  )
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -74,12 +102,26 @@ interface PageProps {
 export default async function LandIndexPage({ searchParams }: PageProps) {
   const sp = await searchParams
 
-  // Resolve province id from slug
-  const [provinces, trendingListings, trendingQueries] = await Promise.all([
-    fetchProvinces(),
-    getTrendingListings('national', undefined, 12),
-    getTrendingSearches(),
-  ])
+  // ── Fetch all data — guarded so a single Supabase failure
+  //    never crashes the whole page with a 500 error. ────────────────────────
+  let provinces:       Awaited<ReturnType<typeof fetchProvinces>>       = []
+  let trendingListings: Awaited<ReturnType<typeof getTrendingListings>>  = []
+  let trendingQueries: Awaited<ReturnType<typeof getTrendingSearches>>  = []
+  let listings:        Awaited<ReturnType<typeof fetchLandListings>>['listings'] = []
+  let total        = 0
+  let totalPages   = 0
+  let fetchError   = false
+
+  try {
+    ;[provinces, trendingListings, trendingQueries] = await Promise.all([
+      fetchProvinces(),
+      getTrendingListings('national', undefined, 12),
+      getTrendingSearches(),
+    ])
+  } catch (err) {
+    console.error('[LandIndexPage] meta-fetch failed:', err)
+    // Non-fatal: provinces / trending may be empty; main listings still attempted
+  }
 
   const activeProvince = sp.tinh
     ? provinces.find(p => p.slug === sp.tinh)
@@ -98,17 +140,24 @@ export default async function LandIndexPage({ searchParams }: PageProps) {
 
   const page = Math.max(1, parseInt(sp.trang ?? '1', 10) || 1)
 
-  const result = await fetchLandListings({
-    provinceId: activeProvince?.id,
-    landTypes,
-    legals,
-    priceMin:  sp.gia_min    ? parseTyToVnd(sp.gia_min)    : undefined,
-    priceMax:  sp.gia_max    ? parseTyToVnd(sp.gia_max)    : undefined,
-    sort,
-    page,
-  })
+  try {
+    const result = await fetchLandListings({
+      provinceId: activeProvince?.id,
+      landTypes,
+      legals,
+      priceMin:  sp.gia_min ? parseTyToVnd(sp.gia_min) : undefined,
+      priceMax:  sp.gia_max ? parseTyToVnd(sp.gia_max) : undefined,
+      sort,
+      page,
+    })
+    listings   = result.listings
+    total      = result.total
+    totalPages = result.totalPages
+  } catch (err) {
+    console.error('[LandIndexPage] fetchLandListings failed:', err)
+    fetchError = true
+  }
 
-  const { listings, total, totalPages } = result
   const activeCount = countActiveFilters(sp)
   const isFiltered = activeCount > 0
 
@@ -187,7 +236,9 @@ export default async function LandIndexPage({ searchParams }: PageProps) {
           </div>
 
           {/* Grid */}
-          {listings.length === 0 ? (
+          {fetchError ? (
+            <ErrorState />
+          ) : listings.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

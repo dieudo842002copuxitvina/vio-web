@@ -265,14 +265,15 @@ export function DashboardSidebar({ displayName, email, isPro }: DashboardSidebar
               <button
                 type="submit"
                 title="Đăng xuất"
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-400
-                           transition-colors hover:bg-red-50 hover:text-red-500"
+                className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-1
+                           text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
+                <span className="text-[9px] font-semibold leading-none">Đăng xuất</span>
               </button>
             </form>
           </div>
